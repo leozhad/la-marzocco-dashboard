@@ -365,6 +365,18 @@ class LaMarzoccoDashboard:
     def generate_dashboard_html(self, machine_data: Dict[str, Any]) -> str:
         """Generate HTML dashboard from machine data"""
         
+        # Format timestamp for better readability
+        try:
+            from datetime import datetime
+            timestamp_obj = datetime.fromisoformat(machine_data['timestamp'].replace('Z', '+00:00'))
+            formatted_timestamp = timestamp_obj.strftime('%B %d, %Y at %I:%M %p UTC')
+        except:
+            formatted_timestamp = machine_data['timestamp']
+        
+        # Add formatted timestamp to data
+        template_data = machine_data.copy()
+        template_data['formatted_timestamp'] = formatted_timestamp
+        
         # HTML template with embedded CSS and JavaScript
         template_str = """
 <!DOCTYPE html>
@@ -938,7 +950,14 @@ class LaMarzoccoDashboard:
                 {% for shot in recent_shots[:3] %}
                 <div class="stat-row">
                     <span class="stat-label">Shot {{ loop.index }}</span>
-                    <span class="stat-value">{{ shot.extraction_seconds }}s • {{ shot.dose_value }}g</span>
+                    <span class="stat-value">
+                        {{ shot.extraction_seconds }}s • {{ shot.dose_value }}g • 
+                        {% if shot.dose_value > 0 %}
+                            {{ "%.1f"|format(shot.extraction_seconds / shot.dose_value) }}s/g
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
                 </div>
                 {% endfor %}
                 {% if recent_shots|length > 3 %}
@@ -946,7 +965,14 @@ class LaMarzoccoDashboard:
                     <span class="stat-label">Average (Last 5)</span>
                     <span class="stat-value">
                         {{ "%.1f"|format(recent_shots[:5]|map(attribute='extraction_seconds')|sum / 5) }}s • 
-                        {{ "%.1f"|format(recent_shots[:5]|map(attribute='dose_value')|sum / 5) }}g
+                        {{ "%.1f"|format(recent_shots[:5]|map(attribute='dose_value')|sum / 5) }}g •
+                        {% set avg_time = recent_shots[:5]|map(attribute='extraction_seconds')|sum / 5 %}
+                        {% set avg_dose = recent_shots[:5]|map(attribute='dose_value')|sum / 5 %}
+                        {% if avg_dose > 0 %}
+                            {{ "%.1f"|format(avg_time / avg_dose) }}s/g
+                        {% else %}
+                            N/A
+                        {% endif %}
                     </span>
                 </div>
                 {% endif %}
@@ -1024,7 +1050,7 @@ class LaMarzoccoDashboard:
         </div>
         
         <div class="last-updated">
-            <strong>Last Updated:</strong> {{ timestamp }}<br>
+            <strong>Last Updated:</strong> {{ formatted_timestamp }}<br>
             <small>Data collected via {{ collection_method }}</small>
         </div>
         
@@ -1309,7 +1335,7 @@ class LaMarzoccoDashboard:
         """
         
         template = Template(template_str)
-        return template.render(**machine_data)
+        return template.render(**template_data)
 
     async def upload_to_s3(self, html_content: str, json_data: Dict[str, Any]):
         """Upload generated content to S3"""
