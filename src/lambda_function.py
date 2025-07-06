@@ -640,6 +640,74 @@ class LaMarzoccoDashboard:
             text-align: center;
         }
         
+        /* Matrix Toggle Switch */
+        .matrix-toggle-container {
+            text-align: center;
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+        }
+        
+        .matrix-toggle-label {
+            color: #ccc;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #333;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: #666;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background-color: #d4af37;
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+            background-color: #fff;
+        }
+        
+        .toggle-status {
+            margin-top: 8px;
+            font-size: 0.8em;
+            color: #999;
+        }
+        
         /* Enhanced Responsive Design */
         @media (max-width: 1200px) {
             .dashboard-grid {
@@ -1172,6 +1240,16 @@ class LaMarzoccoDashboard:
             <small>Data collected via {{ collection_method }}</small>
         </div>
         
+        <!-- Matrix Effect Toggle -->
+        <div class="matrix-toggle-container">
+            <label class="matrix-toggle-label">☕ Coffee Matrix Background</label>
+            <label class="toggle-switch">
+                <input type="checkbox" id="matrix-toggle">
+                <span class="toggle-slider"></span>
+            </label>
+            <div class="toggle-status" id="matrix-status">Off</div>
+        </div>
+        
         <div class="footer">
             <p>La Marzocco Dashboard • Powered by <a href="https://aws.amazon.com/lambda/" target="_blank" style="color: #4a9eff; text-decoration: none;">AWS Lambda</a> & <a href="https://github.com/zweckj/pylamarzocco" target="_blank" style="color: #4a9eff; text-decoration: none;">{{ client_version }}</a></p>
             <p style="margin-top: 5px; font-size: 0.9em; color: #888;">
@@ -1356,7 +1434,12 @@ class LaMarzoccoDashboard:
         // Coffee Matrix Background Animation
         function createCoffeeMatrix() {
             const matrixBg = document.getElementById('matrix-bg');
-            if (!matrixBg) return;
+            const toggle = document.getElementById('matrix-toggle');
+            
+            if (!matrixBg || !toggle || !toggle.checked) return;
+            
+            // Clear any existing columns first
+            matrixBg.innerHTML = '';
             
             // Only coffee-related emojis for authentic coffee matrix
             const coffeeEmojis = ['☕', '🫘', '🥤', '🧋', '🍵', '🫖'];
@@ -1368,14 +1451,19 @@ class LaMarzoccoDashboard:
             // Create all columns at once for parallel falling effect
             for (let i = 0; i < numColumns; i++) {
                 setTimeout(() => {
-                    createMatrixColumn(i * columnWidth, coffeeEmojis, i);
+                    // Check if toggle is still on before creating column
+                    if (toggle.checked) {
+                        createMatrixColumn(i * columnWidth, coffeeEmojis, i);
+                    }
                 }, Math.random() * 2000); // Stagger initial creation
             }
         }
         
         function createMatrixColumn(x, emojis, columnIndex) {
             const matrixBg = document.getElementById('matrix-bg');
-            if (!matrixBg) return;
+            const toggle = document.getElementById('matrix-toggle');
+            
+            if (!matrixBg || !toggle || !toggle.checked) return;
             
             const column = document.createElement('div');
             column.className = 'matrix-column';
@@ -1407,18 +1495,55 @@ class LaMarzoccoDashboard:
                 if (column.parentNode) {
                     column.remove();
                 }
-                // Recreate the same column position with new random content
-                createMatrixColumn(x, emojis, columnIndex);
+                // Only recreate if toggle is still on
+                if (toggle && toggle.checked) {
+                    createMatrixColumn(x, emojis, columnIndex);
+                }
             }, duration * 1000);
         }
         
-        // Initialize coffee matrix on page load
-        createCoffeeMatrix();
+        // Initialize coffee matrix on page load (default: off)
+        // Don't start matrix automatically - wait for user toggle
         
-        // Recreate matrix on window resize
+        // Matrix Toggle Functionality
+        function initializeMatrixToggle() {
+            const toggle = document.getElementById('matrix-toggle');
+            const status = document.getElementById('matrix-status');
+            const matrixBg = document.getElementById('matrix-bg');
+            
+            if (!toggle || !status || !matrixBg) return;
+            
+            // Set default state (off)
+            toggle.checked = false;
+            status.textContent = 'Off';
+            matrixBg.style.display = 'none';
+            
+            // Handle toggle changes
+            toggle.addEventListener('change', function() {
+                if (this.checked) {
+                    // Turn on Matrix effect
+                    status.textContent = 'On';
+                    matrixBg.style.display = 'block';
+                    createCoffeeMatrix();
+                } else {
+                    // Turn off Matrix effect
+                    status.textContent = 'Off';
+                    matrixBg.style.display = 'none';
+                    // Clear existing columns
+                    matrixBg.innerHTML = '';
+                }
+            });
+        }
+        
+        // Initialize toggle on page load
+        initializeMatrixToggle();
+        
+        // Recreate matrix on window resize (only if toggle is on)
         window.addEventListener('resize', () => {
             const matrixBg = document.getElementById('matrix-bg');
-            if (matrixBg) {
+            const toggle = document.getElementById('matrix-toggle');
+            
+            if (matrixBg && toggle && toggle.checked) {
                 // Clear existing columns
                 matrixBg.innerHTML = '';
                 // Recreate matrix with new dimensions
