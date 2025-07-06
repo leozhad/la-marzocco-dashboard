@@ -32,7 +32,7 @@ echo "  Stack Name: $STACK_NAME"
 echo ""
 
 # Check if stack exists
-if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --profile leo --region "$AWS_REGION" > /dev/null 2>&1; then
+if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" > /dev/null 2>&1; then
     echo -e "${YELLOW}Stack '$STACK_NAME' does not exist or is already deleted.${NC}"
     exit 0
 fi
@@ -41,7 +41,7 @@ fi
 echo -e "${BLUE}Current stack resources:${NC}"
 OUTPUTS=$(aws cloudformation describe-stacks \
     --stack-name "$STACK_NAME" \
-    --profile leo \
+    \
     --region "$AWS_REGION" \
     --query 'Stacks[0].Outputs' 2>/dev/null || echo "[]")
 
@@ -81,7 +81,7 @@ echo -e "${YELLOW}Step 1: Emptying S3 bucket (if it exists)...${NC}"
 # Try to empty S3 bucket first (CloudFormation can't delete non-empty buckets)
 if [ "$S3_BUCKET_NAME" != "N/A" ] && [ -n "$S3_BUCKET_NAME" ]; then
     echo "Emptying S3 bucket: $S3_BUCKET_NAME"
-    aws s3 rm s3://"$S3_BUCKET_NAME" --recursive --profile leo --region "$AWS_REGION" 2>/dev/null || echo "Bucket already empty or doesn't exist"
+    aws s3 rm s3://"$S3_BUCKET_NAME" --recursive --region "$AWS_REGION" 2>/dev/null || echo "Bucket already empty or doesn't exist"
     echo -e "${GREEN}✅ S3 bucket emptied${NC}"
 else
     echo "No S3 bucket to empty"
@@ -92,7 +92,7 @@ echo -e "${YELLOW}Step 2: Deleting AWS infrastructure...${NC}"
 # Delete the stack
 aws cloudformation delete-stack \
     --stack-name "$STACK_NAME" \
-    --profile leo \
+    \
     --region "$AWS_REGION"
 
 if [ $? -eq 0 ]; then
@@ -103,7 +103,7 @@ if [ $? -eq 0 ]; then
     
     aws cloudformation wait stack-delete-complete \
         --stack-name "$STACK_NAME" \
-        --profile leo \
+        \
         --region "$AWS_REGION"
     
     if [ $? -eq 0 ]; then

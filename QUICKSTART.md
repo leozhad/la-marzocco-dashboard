@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-1. **AWS CLI** configured with the "leo" profile
+1. **AWS CLI** configured with appropriate permissions
 2. **La Marzocco Account** with machine registered
 3. **Domain** in Route53 (or will be created)
 4. **Python 3.11+** and **jq** installed
@@ -63,7 +63,7 @@ Visit `https://espresso.leozh.net` (your domain)
 ```bash
 aws cloudformation describe-stacks \
   --stack-name la-marzocco-dashboard \
-  --profile leo \
+  \
   --region us-west-2
 ```
 
@@ -75,7 +75,7 @@ aws cloudformation describe-stacks \
 ### View Logs
 ```bash
 aws logs tail /aws/lambda/la-marzocco-dashboard-updater \
-  --profile leo \
+  \
   --region us-west-2 \
   --follow
 ```
@@ -85,7 +85,7 @@ aws logs tail /aws/lambda/la-marzocco-dashboard-updater \
 aws lambda invoke \
   --function-name la-marzocco-dashboard-updater \
   --payload '{}' \
-  --profile leo \
+  \
   --region us-west-2 \
   response.json && cat response.json | jq .
 ```
@@ -102,7 +102,7 @@ aws lambda invoke \
 # Check what failed
 aws cloudformation describe-stack-events \
   --stack-name la-marzocco-dashboard \
-  --profile leo \
+  \
   --region us-west-2 \
   --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`]'
 ```
@@ -113,7 +113,7 @@ aws cloudformation describe-stack-events \
 aws logs filter-log-events \
   --log-group-name /aws/lambda/la-marzocco-dashboard-updater \
   --start-time $(date -d '1 hour ago' +%s)000 \
-  --profile leo \
+  \
   --region us-west-2
 ```
 

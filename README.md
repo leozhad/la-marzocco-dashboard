@@ -60,7 +60,7 @@ A serverless web dashboard for monitoring your La Marzocco Linea Mini espresso m
 
 1. **La Marzocco Machine**: Linea Mini with cloud connectivity
 2. **La Marzocco Account**: Cloud account with machine registered
-3. **AWS Account**: Personal AWS account with "leo" profile configured
+3. **AWS Account**: AWS account with appropriate permissions configured
 4. **Domain**: Route53 hosted zone for your domain
 5. **Tools**: AWS CLI, Python 3.11+, jq (for JSON parsing)
 
@@ -117,7 +117,7 @@ Visit `https://espresso.leozh.net` (or your configured domain)
 ```bash
 aws cloudformation describe-stacks \
   --stack-name la-marzocco-dashboard \
-  --profile leo \
+  \
   --region us-west-2
 ```
 
@@ -129,7 +129,7 @@ aws cloudformation describe-stacks \
 ### View Logs
 ```bash
 aws logs tail /aws/lambda/la-marzocco-dashboard-updater \
-  --profile leo \
+  \
   --region us-west-2 \
   --follow
 ```
@@ -139,7 +139,7 @@ aws logs tail /aws/lambda/la-marzocco-dashboard-updater \
 aws lambda invoke \
   --function-name la-marzocco-dashboard-updater \
   --payload '{}' \
-  --profile leo \
+  \
   --region us-west-2 \
   response.json && cat response.json | jq .
 ```
@@ -217,7 +217,7 @@ The dashboard displays comprehensive machine information:
 # Check what failed
 aws cloudformation describe-stack-events \
   --stack-name la-marzocco-dashboard \
-  --profile leo \
+  \
   --region us-west-2 \
   --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`]'
 ```
@@ -228,7 +228,7 @@ aws cloudformation describe-stack-events \
 aws logs filter-log-events \
   --log-group-name /aws/lambda/la-marzocco-dashboard-updater \
   --start-time $(date -d '1 hour ago' +%s)000 \
-  --profile leo \
+  \
   --region us-west-2
 ```
 
@@ -326,15 +326,15 @@ la-marzocco-dashboard/
 ### Useful Commands
 ```bash
 # Stack operations
-aws cloudformation list-stacks --profile leo --region us-west-2
+aws cloudformation list-stacks --region us-west-2
 aws cloudformation validate-template --template-body file://cloudformation/main.yaml
 
 # Resource inspection
-aws cloudformation list-stack-resources --stack-name la-marzocco-dashboard --profile leo --region us-west-2
+aws cloudformation list-stack-resources --stack-name la-marzocco-dashboard --region us-west-2
 
 # Monitoring
-aws logs describe-log-groups --log-group-name-prefix /aws/lambda/la-marzocco --profile leo --region us-west-2
-aws events list-rules --name-prefix la-marzocco --profile leo --region us-west-2
+aws logs describe-log-groups --log-group-name-prefix /aws/lambda/la-marzocco --region us-west-2
+aws events list-rules --name-prefix la-marzocco --region us-west-2
 ```
 
 ---

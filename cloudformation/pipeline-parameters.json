@@ -12,10 +12,6 @@
     "ParameterValue": "main"
   },
   {
-    "ParameterKey": "GitHubToken",
-    "ParameterValue": "***REMOVED***"
-  },
-  {
     "ParameterKey": "DomainName",
     "ParameterValue": "espresso.leozh.net"
   }

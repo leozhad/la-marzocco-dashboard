@@ -104,7 +104,7 @@ echo -e "${GREEN}✅ Parameters file updated${NC}"
 echo -e "${YELLOW}Step 3: Deploying AWS infrastructure...${NC}"
 
 # Check if stack exists
-if aws cloudformation describe-stacks --stack-name "$STACK_NAME" --profile leo --region "$AWS_REGION" > /dev/null 2>&1; then
+if aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" > /dev/null 2>&1; then
     echo "Stack exists, updating..."
     OPERATION="update-stack"
     WAIT_CONDITION="stack-update-complete"
@@ -120,7 +120,7 @@ aws cloudformation $OPERATION \
     --template-body file://cloudformation/main.yaml \
     --parameters file://cloudformation/parameters.json \
     --capabilities CAPABILITY_NAMED_IAM \
-    --profile leo \
+    \
     --region "$AWS_REGION"
 
 if [ $? -eq 0 ]; then
@@ -129,7 +129,7 @@ if [ $? -eq 0 ]; then
     echo "Waiting for stack deployment to complete..."
     aws cloudformation wait $WAIT_CONDITION \
         --stack-name "$STACK_NAME" \
-        --profile leo \
+        \
         --region "$AWS_REGION"
     
     if [ $? -eq 0 ]; then
@@ -149,7 +149,7 @@ echo -e "${YELLOW}Step 4: Updating Lambda function code...${NC}"
 # Get Lambda function name from stack outputs
 LAMBDA_FUNCTION_NAME=$(aws cloudformation describe-stacks \
     --stack-name "$STACK_NAME" \
-    --profile leo \
+    \
     --region "$AWS_REGION" \
     --query 'Stacks[0].Outputs[?OutputKey==`LambdaFunctionName`].OutputValue' \
     --output text)
@@ -161,7 +161,7 @@ if [ -n "$LAMBDA_FUNCTION_NAME" ]; then
     aws lambda update-function-code \
         --function-name "$LAMBDA_FUNCTION_NAME" \
         --zip-file fileb://"$LAMBDA_ZIP_PATH" \
-        --profile leo \
+        \
         --region "$AWS_REGION" > /dev/null
     
     if [ $? -eq 0 ]; then
@@ -181,7 +181,7 @@ echo -e "${YELLOW}Step 5: Getting stack outputs...${NC}"
 # Get all stack outputs
 OUTPUTS=$(aws cloudformation describe-stacks \
     --stack-name "$STACK_NAME" \
-    --profile leo \
+    \
     --region "$AWS_REGION" \
     --query 'Stacks[0].Outputs')
 
@@ -205,7 +205,7 @@ echo -e "${YELLOW}Step 6: Testing the Lambda function...${NC}"
 # Trigger the Lambda function manually for initial test
 echo "Triggering initial dashboard update..."
 aws lambda invoke \
-    --profile leo \
+    \
     --region "$AWS_REGION" \
     --function-name "$LAMBDA_FUNCTION_NAME" \
     --payload '{}' \
@@ -219,7 +219,7 @@ if [ $? -eq 0 ]; then
 else
     echo -e "${RED}❌ Lambda function execution failed${NC}"
     echo "Check CloudWatch logs for details:"
-    echo "  aws logs tail /aws/lambda/$LAMBDA_FUNCTION_NAME --profile leo --region $AWS_REGION --follow"
+    echo "  aws logs tail /aws/lambda/$LAMBDA_FUNCTION_NAME --region $AWS_REGION --follow"
 fi
 
 echo ""
@@ -231,13 +231,13 @@ echo "2. Visit your dashboard: $DASHBOARD_URL"
 echo "3. The dashboard will update automatically every 5 minutes"
 echo ""
 echo -e "${BLUE}Monitoring:${NC}"
-echo "• CloudWatch Logs: aws logs tail /aws/lambda/$LAMBDA_FUNCTION_NAME --profile leo --region $AWS_REGION --follow"
+echo "• CloudWatch Logs: aws logs tail /aws/lambda/$LAMBDA_FUNCTION_NAME --region $AWS_REGION --follow"
 echo "• Lambda Metrics: AWS Console → Lambda → $LAMBDA_FUNCTION_NAME"
 echo "• S3 Bucket: AWS Console → S3 → $S3_BUCKET_NAME"
 echo "• CloudFormation: AWS Console → CloudFormation → $STACK_NAME"
 echo ""
 echo -e "${BLUE}Management:${NC}"
 echo "• Update stack: ./deploy-cloudformation.sh"
-echo "• Delete stack: aws cloudformation delete-stack --stack-name $STACK_NAME --profile leo --region $AWS_REGION"
+echo "• Delete stack: aws cloudformation delete-stack --stack-name $STACK_NAME --region $AWS_REGION"
 echo ""
 echo -e "${YELLOW}Note: The EventBridge rule will trigger the function every 5 minutes automatically.${NC}"

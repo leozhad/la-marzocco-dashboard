@@ -70,7 +70,7 @@ DOMAIN_NAME=espresso.leozh.net      # Your domain name
 ```
 
 ### AWS Profile
-- Uses "leo" profile configured in AWS CLI
+- Uses AWS CLI with configured credentials
 - Set in CloudFormation provider configuration
 - Used by deployment scripts
 

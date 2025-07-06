@@ -108,7 +108,7 @@ aws cloudformation describe-stacks --stack-name la-marzocco-dashboard --profile 
 
 ### View Logs
 ```bash
-aws logs tail /aws/lambda/la-marzocco-dashboard-updater --profile leo --follow
+aws logs tail /aws/lambda/la-marzocco-dashboard-updater --follow
 ```
 
 ### Update Stack
@@ -189,7 +189,7 @@ Uses the **`pylamarzocco`** Python library to connect directly to the La Marzocc
 
 ## Getting Started
 
-1. **Prerequisites**: AWS CLI with "leo" profile, La Marzocco account
+1. **Prerequisites**: AWS CLI configured, La Marzocco account
 2. **Configure**: Copy `.env.example` to `.env` and add credentials
 3. **Deploy**: Run `./deploy.sh`
 4. **Access**: Visit your dashboard URL

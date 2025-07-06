@@ -8,7 +8,7 @@ set -e
 # Configuration
 STACK_NAME="la-marzocco-deployment-pipeline"
 REGION="us-west-2"
-PROFILE="leo"
+PROFILE="${AWS_PROFILE:-default}"
 
 # Colors for output
 RED='\033[0;31m'

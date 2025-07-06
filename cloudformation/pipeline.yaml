@@ -17,11 +17,6 @@ Parameters:
     Description: GitHub branch to track
     Default: main
   
-  GitHubToken:
-    Type: String
-    Description: GitHub personal access token
-    NoEcho: true
-  
   DomainName:
     Type: String
     Description: Domain name for the dashboard
@@ -165,6 +160,7 @@ Resources:
                   - secretsmanager:GetSecretValue
                 Resource: 
                   - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:la-marzocco-pipeline-credentials-*'
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:la-marzocco-github-token-*'
 
   # CodePipeline Service Role
   CodePipelineServiceRole:
@@ -241,7 +237,7 @@ Resources:
                 Owner: !Ref GitHubOwner
                 Repo: !Ref GitHubRepo
                 Branch: !Ref GitHubBranch
-                OAuthToken: !Ref GitHubToken
+                OAuthToken: !Sub '{{resolve:secretsmanager:la-marzocco-github-token:SecretString:token}}'
                 PollForSourceChanges: true
               OutputArtifacts:
                 - Name: SourceOutput
