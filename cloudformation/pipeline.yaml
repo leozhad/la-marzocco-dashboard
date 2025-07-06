@@ -219,6 +219,10 @@ Resources:
                 Action:
                   - iam:PassRole
                 Resource: !GetAtt CloudFormationServiceRole.Arn
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt LambdaUpdateFunction.Arn
 
   # CodePipeline
   Pipeline:
