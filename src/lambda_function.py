@@ -1056,6 +1056,9 @@ class LaMarzoccoDashboard:
         
         <div class="footer">
             <p>La Marzocco Dashboard • Powered by AWS Lambda & {{ client_version }}</p>
+            <p style="margin-top: 5px; font-size: 0.9em; color: #888;">
+                Created by <a href="https://github.com/leozhad/la-marzocco-dashboard" target="_blank" style="color: #4a9eff; text-decoration: none;">Leo Zhadanovsky</a>
+            </p>
             <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
                 Auto-refresh in: <span id="refresh-countdown">5:00</span>
             </p>
