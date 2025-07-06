@@ -506,32 +506,29 @@ aws events list-rules --name-prefix la-marzocco --region $AWS_REGION
 
 ## License
 
-This project is licensed under the **Amazon Software License (ASL)** - see the [LICENSE](LICENSE) file for complete terms.
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for complete terms.
 
 ### License Summary
 
-The Amazon Software License provides you with:
+The MIT License is a permissive open source license that provides you with:
 
 #### ✅ **Permissions**
-- **Use**: Run the software for any purpose
-- **Modify**: Create derivative works and modifications
-- **Distribute**: Share and redistribute the software
-- **Patent Protection**: Patent grant protects against patent claims
+- **Commercial Use**: Use the software for commercial purposes
+- **Modification**: Create derivative works and modifications
+- **Distribution**: Share and redistribute the software
+- **Private Use**: Use the software for private purposes
 
 #### 📋 **Requirements**
-- **Attribution**: Retain all copyright, patent, and attribution notices
-- **License Inclusion**: Include a copy of this license with distributions
-- **Source Disclosure**: Maintain source form notices in derivative works
+- **License and Copyright Notice**: Include the original license and copyright notice with the software
 
 #### ⚠️ **Limitations**
+- **No Liability**: Authors are not liable for damages
 - **No Warranty**: Software provided "AS IS" without warranties
-- **Liability**: Limited liability for damages or losses
-- **Trademark**: No rights to use Amazon trademarks
 
 ### Contributing
 
-By contributing to this project, you agree that your contributions will be licensed under the same Amazon Software License. All voluntary contributions are welcome and will help improve the La Marzocco Dashboard for the entire community.
+By contributing to this project, you agree that your contributions will be licensed under the same MIT License. All voluntary contributions are welcome and will help improve the La Marzocco Dashboard for the entire community.
 
-For more information about the Amazon Software License, visit: https://aws.amazon.com/asl/
+The MIT License is one of the most permissive and widely-used open source licenses, making this project easy to use, modify, and integrate into other projects.
 
 **Enjoy your serverless La Marzocco dashboard!** ☕️
