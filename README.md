@@ -504,4 +504,34 @@ aws events list-rules --name-prefix la-marzocco --region $AWS_REGION
 
 **Created by [Leo Zhadanovsky](https://github.com/leozhad/la-marzocco-dashboard)**
 
+## License
+
+This project is licensed under the **Amazon Software License (ASL)** - see the [LICENSE](LICENSE) file for complete terms.
+
+### License Summary
+
+The Amazon Software License provides you with:
+
+#### ✅ **Permissions**
+- **Use**: Run the software for any purpose
+- **Modify**: Create derivative works and modifications
+- **Distribute**: Share and redistribute the software
+- **Patent Protection**: Patent grant protects against patent claims
+
+#### 📋 **Requirements**
+- **Attribution**: Retain all copyright, patent, and attribution notices
+- **License Inclusion**: Include a copy of this license with distributions
+- **Source Disclosure**: Maintain source form notices in derivative works
+
+#### ⚠️ **Limitations**
+- **No Warranty**: Software provided "AS IS" without warranties
+- **Liability**: Limited liability for damages or losses
+- **Trademark**: No rights to use Amazon trademarks
+
+### Contributing
+
+By contributing to this project, you agree that your contributions will be licensed under the same Amazon Software License. All voluntary contributions are welcome and will help improve the La Marzocco Dashboard for the entire community.
+
+For more information about the Amazon Software License, visit: https://aws.amazon.com/asl/
+
 **Enjoy your serverless La Marzocco dashboard!** ☕️
