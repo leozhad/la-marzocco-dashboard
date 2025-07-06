@@ -79,8 +79,9 @@ DOMAIN_NAME=<your-domain-name>
 ### 2. Deploy CI/CD Pipeline
 
 ```bash
-# Set your AWS profile
+# Set your AWS profile and region
 export AWS_PROFILE=<your-profile-name>
+export AWS_REGION=<your-aws-region>
 
 # Deploy the CodePipeline
 ./deploy-pipeline.sh
@@ -94,16 +95,16 @@ After the pipeline is deployed, you need to add your La Marzocco credentials to 
 
 ```bash
 # Find your secret name (it will be something like la-marzocco-dashboard-credentials-xxxxx)
-AWS_PROFILE=<your-profile-name> aws secretsmanager list-secrets \
-  --region <your-aws-region> \
+aws secretsmanager list-secrets \
+  --region $AWS_REGION \
   --query 'SecretList[?contains(Name, `la-marzocco-dashboard-credentials`)].Name' \
   --output text
 
 # Update the secret with your La Marzocco credentials
-AWS_PROFILE=<your-profile-name> aws secretsmanager update-secret \
+aws secretsmanager update-secret \
   --secret-id <secret-name-from-above> \
   --secret-string '{"username":"your-lamarzocco-username","password":"your-lamarzocco-password"}' \
-  --region <your-aws-region>
+  --region $AWS_REGION
 ```
 
 **Important**: Replace `<your-profile-name>` with your AWS CLI profile name, `<your-aws-region>` with your deployment region, and use your actual La Marzocco Cloud credentials.
@@ -152,38 +153,38 @@ Visit `https://your-domain.com` (your configured domain)
 
 ### View Pipeline Status
 ```bash
-AWS_PROFILE=<your-profile> aws codepipeline get-pipeline-state \
+aws codepipeline get-pipeline-state \
   --name la-marzocco-deployment-pipeline-pipeline \
-  --region <your-aws-region>
+  --region $AWS_REGION
 ```
 
 ### View Application Logs
 ```bash
-AWS_PROFILE=<your-profile> aws logs tail /aws/lambda/la-marzocco-dashboard-updater \
-  --region <your-aws-region> \
+aws logs tail /aws/lambda/la-marzocco-dashboard-updater \
+  --region $AWS_REGION \
   --follow
 ```
 
 ### Test Lambda Function
 ```bash
-AWS_PROFILE=<your-profile> aws lambda invoke \
+aws lambda invoke \
   --function-name la-marzocco-dashboard-updater \
   --payload '{}' \
-  --region <your-aws-region> \
+  --region $AWS_REGION \
   response.json && cat response.json | jq .
 ```
 
 ### Manual Stack Operations (if needed)
 ```bash
 # View stack status
-AWS_PROFILE=<your-profile> aws cloudformation describe-stacks \
+aws cloudformation describe-stacks \
   --stack-name la-marzocco-dashboard \
-  --region <your-aws-region>
+  --region $AWS_REGION
 
 # View stack resources
-AWS_PROFILE=<your-profile> aws cloudformation list-stack-resources \
+aws cloudformation list-stack-resources \
   --stack-name la-marzocco-dashboard \
-  --region <your-aws-region>
+  --region $AWS_REGION
 ```
 
 ### Delete Everything
@@ -309,33 +310,33 @@ The dashboard displays comprehensive machine information:
 ### Pipeline Deployment Failed
 ```bash
 # Check pipeline execution
-AWS_PROFILE=<your-profile> aws codepipeline list-pipeline-executions \
+aws codepipeline list-pipeline-executions \
   --pipeline-name la-marzocco-deployment-pipeline-pipeline \
-  --region <your-aws-region>
+  --region $AWS_REGION
 
 # Check CodeBuild logs
-AWS_PROFILE=<your-profile> aws logs filter-log-events \
+aws logs filter-log-events \
   --log-group-name /aws/codebuild/la-marzocco-deployment-pipeline-build \
   --start-time $(date -d '1 hour ago' +%s)000 \
-  --region <your-aws-region>
+  --region $AWS_REGION
 ```
 
 ### Stack Deployment Failed
 ```bash
 # Check what failed
-AWS_PROFILE=<your-profile> aws cloudformation describe-stack-events \
+aws cloudformation describe-stack-events \
   --stack-name la-marzocco-dashboard \
-  --region <your-aws-region> \
+  --region $AWS_REGION \
   --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`]'
 ```
 
 ### Lambda Function Not Working
 ```bash
 # Check recent logs
-AWS_PROFILE=<your-profile> aws logs filter-log-events \
+aws logs filter-log-events \
   --log-group-name /aws/lambda/la-marzocco-dashboard-updater \
   --start-time $(date -d '1 hour ago' +%s)000 \
-  --region <your-aws-region>
+  --region $AWS_REGION
 ```
 
 ### Dashboard Not Loading
@@ -421,16 +422,17 @@ This project supports any AWS CLI profile configuration:
 ### Environment Variable Method (Recommended)
 ```bash
 export AWS_PROFILE=<your-profile-name>
+export AWS_REGION=<your-aws-region>
 ./deploy-pipeline.sh
 ```
 
 ### Per-Command Method
 ```bash
-AWS_PROFILE=<your-profile-name> ./deploy-pipeline.sh
+AWS_PROFILE=<your-profile-name> AWS_REGION=<your-aws-region> ./deploy-pipeline.sh
 ```
 
 ### Default Profile
-If no profile is specified, scripts use your default AWS CLI profile.
+If no profile is specified, scripts use your default AWS CLI profile and the region from your `.env` file.
 
 ## Support
 
@@ -446,19 +448,19 @@ If no profile is specified, scripts use your default AWS CLI profile.
 ### Useful Commands
 ```bash
 # Pipeline operations
-AWS_PROFILE=<your-profile> aws codepipeline list-pipelines --region <your-aws-region>
-AWS_PROFILE=<your-profile> aws codepipeline get-pipeline-state --name pipeline-name --region <your-aws-region>
+aws codepipeline list-pipelines --region $AWS_REGION
+aws codepipeline get-pipeline-state --name pipeline-name --region $AWS_REGION
 
 # Stack operations
-AWS_PROFILE=<your-profile> aws cloudformation list-stacks --region <your-aws-region>
-AWS_PROFILE=<your-profile> aws cloudformation validate-template --template-body file://cloudformation/main.yaml
+aws cloudformation list-stacks --region $AWS_REGION
+aws cloudformation validate-template --template-body file://cloudformation/main.yaml
 
 # Resource inspection
-AWS_PROFILE=<your-profile> aws cloudformation list-stack-resources --stack-name la-marzocco-dashboard --region <your-aws-region>
+aws cloudformation list-stack-resources --stack-name la-marzocco-dashboard --region $AWS_REGION
 
 # Monitoring
-AWS_PROFILE=<your-profile> aws logs describe-log-groups --log-group-name-prefix /aws/lambda/la-marzocco --region <your-aws-region>
-AWS_PROFILE=<your-profile> aws events list-rules --name-prefix la-marzocco --region <your-aws-region>
+aws logs describe-log-groups --log-group-name-prefix /aws/lambda/la-marzocco --region $AWS_REGION
+aws events list-rules --name-prefix la-marzocco --region $AWS_REGION
 ```
 
 ---
