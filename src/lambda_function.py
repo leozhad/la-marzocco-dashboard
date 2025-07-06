@@ -1050,7 +1050,7 @@ class LaMarzoccoDashboard:
         </div>
         
         <div class="last-updated">
-            <strong>Last Updated:</strong> {{ formatted_timestamp }}<br>
+            <strong>Last Updated:</strong> <span id="local-timestamp" data-utc="{{ timestamp }}">{{ formatted_timestamp }}</span><br>
             <small>Data collected via {{ collection_method }}</small>
         </div>
         
@@ -1145,6 +1145,40 @@ class LaMarzoccoDashboard:
         // Update countdown every second
         setInterval(updateCountdown, 1000);
         updateCountdown(); // Initial call
+        
+        // Convert UTC timestamp to local timezone
+        function convertToLocalTime() {
+            const timestampElement = document.getElementById('local-timestamp');
+            if (timestampElement) {
+                const utcTimestamp = timestampElement.getAttribute('data-utc');
+                if (utcTimestamp) {
+                    try {
+                        // Parse the UTC timestamp
+                        const utcDate = new Date(utcTimestamp);
+                        
+                        // Format in user's local timezone
+                        const options = {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                            timeZoneName: 'short'
+                        };
+                        
+                        const localTimeString = utcDate.toLocaleString('en-US', options);
+                        timestampElement.textContent = localTimeString;
+                    } catch (error) {
+                        console.log('Error converting timestamp:', error);
+                        // Keep the original formatted timestamp if conversion fails
+                    }
+                }
+            }
+        }
+        
+        // Convert timestamp on page load
+        convertToLocalTime();
         
         // Create Usage Statistics Pie Chart
         const usageCtx = document.getElementById('usageChart');
