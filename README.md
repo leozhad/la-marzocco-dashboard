@@ -1,6 +1,6 @@
 # La Marzocco Dashboard
 
-A serverless web dashboard for monitoring your La Marzocco Linea Mini espresso machine, built with AWS Lambda and the La Marzocco Cloud API.
+A serverless web dashboard for monitoring your La Marzocco espresso machine, built with AWS Lambda and the La Marzocco Cloud API.
 
 ![Application Architecture](generated-diagrams/application-architecture.png)
 
@@ -18,7 +18,7 @@ A serverless web dashboard for monitoring your La Marzocco Linea Mini espresso m
 ## Benefits
 
 - **🚀 Serverless**: No servers to manage, scales automatically
-- **💰 Cost Effective**: Pay only when function runs (~$1.70/month)
+- **💰 Cost Effective**: Pay only when function runs (~$2.75/month)
 - **🔒 Secure**: Credentials in AWS Secrets Manager, HTTPS only
 - **⚡ Fast**: Global CDN with CloudFront
 - **🔄 Automated**: Updates every 5 minutes automatically via GitOps
@@ -55,7 +55,7 @@ The project uses GitOps for deployment:
 
 ### Prerequisites
 
-1. **La Marzocco Machine**: Linea Mini with cloud connectivity
+1. **Compatible La Marzocco Machine**: Any La Marzocco machine or grinder with cloud connectivity ([see compatibility list](https://support-iot.lamarzocco.com/faq/))
 2. **La Marzocco Account**: Cloud account with machine registered
 3. **AWS Account**: AWS account with appropriate permissions configured
 4. **Domain**: Route53 hosted zone for your domain
@@ -80,7 +80,7 @@ DOMAIN_NAME=espresso.leozh.net
 
 ```bash
 # Set your AWS profile
-export AWS_PROFILE=your-profile-name
+export AWS_PROFILE=<your-profile-name>
 
 # Deploy the CodePipeline
 ./deploy-pipeline.sh
@@ -88,7 +88,27 @@ export AWS_PROFILE=your-profile-name
 
 This creates the CI/CD pipeline that will automatically deploy your application from GitHub.
 
-### 3. Deploy Application (via Git)
+### 3. Configure La Marzocco Credentials
+
+After the pipeline is deployed, you need to add your La Marzocco credentials to AWS Secrets Manager:
+
+```bash
+# Find your secret name (it will be something like la-marzocco-dashboard-credentials-xxxxx)
+AWS_PROFILE=<your-profile-name> aws secretsmanager list-secrets \
+  --region us-west-2 \
+  --query 'SecretList[?contains(Name, `la-marzocco-dashboard-credentials`)].Name' \
+  --output text
+
+# Update the secret with your La Marzocco credentials
+AWS_PROFILE=<your-profile-name> aws secretsmanager update-secret \
+  --secret-id <secret-name-from-above> \
+  --secret-string '{"username":"your-lamarzocco-username","password":"your-lamarzocco-password"}' \
+  --region us-west-2
+```
+
+**Important**: Replace `<your-profile-name>` with your AWS CLI profile name and use your actual La Marzocco Cloud credentials.
+
+### 4. Deploy Application (via Git)
 
 ```bash
 # Make any changes to your code
@@ -103,7 +123,7 @@ The CodePipeline will automatically:
 - Update Lambda function code
 - Refresh the dashboard
 
-### 4. Access Dashboard
+### 5. Access Dashboard
 
 Visit `https://your-domain.com` (your configured domain)
 
@@ -126,27 +146,27 @@ Visit `https://your-domain.com` (your configured domain)
 - **S3 Artifacts Bucket**: Build artifact storage
 - **IAM Roles**: Pipeline execution permissions
 
-### Monthly Cost: ~$1.70
+### Monthly Cost: ~$2.75
 
 ## Management
 
 ### View Pipeline Status
 ```bash
-AWS_PROFILE=your-profile aws codepipeline get-pipeline-state \
+AWS_PROFILE=<your-profile> aws codepipeline get-pipeline-state \
   --name la-marzocco-deployment-pipeline-pipeline \
   --region us-west-2
 ```
 
 ### View Application Logs
 ```bash
-AWS_PROFILE=your-profile aws logs tail /aws/lambda/la-marzocco-dashboard-updater \
+AWS_PROFILE=<your-profile> aws logs tail /aws/lambda/la-marzocco-dashboard-updater \
   --region us-west-2 \
   --follow
 ```
 
 ### Test Lambda Function
 ```bash
-AWS_PROFILE=your-profile aws lambda invoke \
+AWS_PROFILE=<your-profile> aws lambda invoke \
   --function-name la-marzocco-dashboard-updater \
   --payload '{}' \
   --region us-west-2 \
@@ -156,12 +176,12 @@ AWS_PROFILE=your-profile aws lambda invoke \
 ### Manual Stack Operations (if needed)
 ```bash
 # View stack status
-AWS_PROFILE=your-profile aws cloudformation describe-stacks \
+AWS_PROFILE=<your-profile> aws cloudformation describe-stacks \
   --stack-name la-marzocco-dashboard \
   --region us-west-2
 
 # View stack resources
-AWS_PROFILE=your-profile aws cloudformation list-stack-resources \
+AWS_PROFILE=<your-profile> aws cloudformation list-stack-resources \
   --stack-name la-marzocco-dashboard \
   --region us-west-2
 ```
@@ -261,12 +281,12 @@ The dashboard displays comprehensive machine information:
 ### Pipeline Deployment Failed
 ```bash
 # Check pipeline execution
-AWS_PROFILE=your-profile aws codepipeline list-pipeline-executions \
+AWS_PROFILE=<your-profile> aws codepipeline list-pipeline-executions \
   --pipeline-name la-marzocco-deployment-pipeline-pipeline \
   --region us-west-2
 
 # Check CodeBuild logs
-AWS_PROFILE=your-profile aws logs filter-log-events \
+AWS_PROFILE=<your-profile> aws logs filter-log-events \
   --log-group-name /aws/codebuild/la-marzocco-deployment-pipeline-build \
   --start-time $(date -d '1 hour ago' +%s)000 \
   --region us-west-2
@@ -275,7 +295,7 @@ AWS_PROFILE=your-profile aws logs filter-log-events \
 ### Stack Deployment Failed
 ```bash
 # Check what failed
-AWS_PROFILE=your-profile aws cloudformation describe-stack-events \
+AWS_PROFILE=<your-profile> aws cloudformation describe-stack-events \
   --stack-name la-marzocco-dashboard \
   --region us-west-2 \
   --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`]'
@@ -284,7 +304,7 @@ AWS_PROFILE=your-profile aws cloudformation describe-stack-events \
 ### Lambda Function Not Working
 ```bash
 # Check recent logs
-AWS_PROFILE=your-profile aws logs filter-log-events \
+AWS_PROFILE=<your-profile> aws logs filter-log-events \
   --log-group-name /aws/lambda/la-marzocco-dashboard-updater \
   --start-time $(date -d '1 hour ago' +%s)000 \
   --region us-west-2
@@ -372,13 +392,13 @@ This project supports any AWS CLI profile configuration:
 
 ### Environment Variable Method (Recommended)
 ```bash
-export AWS_PROFILE=your-profile-name
+export AWS_PROFILE=<your-profile-name>
 ./deploy-pipeline.sh
 ```
 
 ### Per-Command Method
 ```bash
-AWS_PROFILE=your-profile-name ./deploy-pipeline.sh
+AWS_PROFILE=<your-profile-name> ./deploy-pipeline.sh
 ```
 
 ### Default Profile
@@ -398,19 +418,19 @@ If no profile is specified, scripts use your default AWS CLI profile.
 ### Useful Commands
 ```bash
 # Pipeline operations
-AWS_PROFILE=your-profile aws codepipeline list-pipelines --region us-west-2
-AWS_PROFILE=your-profile aws codepipeline get-pipeline-state --name pipeline-name --region us-west-2
+AWS_PROFILE=<your-profile> aws codepipeline list-pipelines --region us-west-2
+AWS_PROFILE=<your-profile> aws codepipeline get-pipeline-state --name pipeline-name --region us-west-2
 
 # Stack operations
-AWS_PROFILE=your-profile aws cloudformation list-stacks --region us-west-2
-AWS_PROFILE=your-profile aws cloudformation validate-template --template-body file://cloudformation/main.yaml
+AWS_PROFILE=<your-profile> aws cloudformation list-stacks --region us-west-2
+AWS_PROFILE=<your-profile> aws cloudformation validate-template --template-body file://cloudformation/main.yaml
 
 # Resource inspection
-AWS_PROFILE=your-profile aws cloudformation list-stack-resources --stack-name la-marzocco-dashboard --region us-west-2
+AWS_PROFILE=<your-profile> aws cloudformation list-stack-resources --stack-name la-marzocco-dashboard --region us-west-2
 
 # Monitoring
-AWS_PROFILE=your-profile aws logs describe-log-groups --log-group-name-prefix /aws/lambda/la-marzocco --region us-west-2
-AWS_PROFILE=your-profile aws events list-rules --name-prefix la-marzocco --region us-west-2
+AWS_PROFILE=<your-profile> aws logs describe-log-groups --log-group-name-prefix /aws/lambda/la-marzocco --region us-west-2
+AWS_PROFILE=<your-profile> aws events list-rules --name-prefix la-marzocco --region us-west-2
 ```
 
 ---
