@@ -1055,7 +1055,7 @@ class LaMarzoccoDashboard:
         </div>
         
         <div class="footer">
-            <p>La Marzocco Dashboard • Powered by AWS Lambda & {{ client_version }}</p>
+            <p>La Marzocco Dashboard • Powered by <a href="https://aws.amazon.com/lambda/" target="_blank" style="color: #4a9eff; text-decoration: none;">AWS Lambda</a> & <a href="https://github.com/zweckj/pylamarzocco" target="_blank" style="color: #4a9eff; text-decoration: none;">{{ client_version }}</a></p>
             <p style="margin-top: 5px; font-size: 0.9em; color: #888;">
                 Created by <a href="https://github.com/leozhad/la-marzocco-dashboard" target="_blank" style="color: #4a9eff; text-decoration: none;">Leo Zhadanovsky</a>
             </p>
