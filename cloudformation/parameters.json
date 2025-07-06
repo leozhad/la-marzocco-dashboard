@@ -1,0 +1,22 @@
+[
+  {
+    "ParameterKey": "ProjectName",
+    "ParameterValue": "la-marzocco-dashboard"
+  },
+  {
+    "ParameterKey": "DomainName",
+    "ParameterValue": "espresso.leozh.net"
+  },
+  {
+    "ParameterKey": "Environment",
+    "ParameterValue": "production"
+  },
+  {
+    "ParameterKey": "LaMarzoccoUsername",
+    "ParameterValue": "***REMOVED***"
+  },
+  {
+    "ParameterKey": "LaMarzoccoPassword",
+    "ParameterValue": "***REMOVED***"
+  }
+]

@@ -1,0 +1,68 @@
+# Environment configuration
+.env
+.env.local
+.env.production
+
+# AWS CloudFormation
+cloudformation/lambda_function.zip
+
+# Lambda deployment packages
+lambda-deployment-package.zip
+lambda-package/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+response.json
+/tmp/
+
+# AWS CLI
+.aws/
+
+# Machine data and test files
+machine_data.json
+test_*.py
+
+# CloudFormation parameters (may contain sensitive info)
+cloudformation/parameters-*.json

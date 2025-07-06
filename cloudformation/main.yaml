@@ -1,0 +1,654 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Serverless La Marzocco Dashboard - Main Infrastructure'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: la-marzocco-dashboard
+    Description: Name of the project
+  
+  DomainName:
+    Type: String
+    Description: Domain name for the dashboard (must have existing Route53 hosted zone)
+    Default: espresso.leozh.net
+    ConstraintDescription: Must be a valid domain name with an existing Route53 hosted zone
+  
+  Environment:
+    Type: String
+    Default: production
+    Description: Environment name
+    AllowedValues:
+      - development
+      - staging
+      - production
+  
+  LaMarzoccoUsername:
+    Type: String
+    Description: La Marzocco Cloud username
+    NoEcho: true
+  
+  LaMarzoccoPassword:
+    Type: String
+    Description: La Marzocco Cloud password
+    NoEcho: true
+
+Resources:
+  # Random suffix for unique resource names
+  RandomSuffix:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt RandomSuffixFunction.Arn
+
+  RandomSuffixFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-random-suffix-generator'
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt RandomSuffixFunctionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import random
+          import string
+          import cfnresponse
+          
+          def handler(event, context):
+              try:
+                  if event['RequestType'] == 'Delete':
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      return
+                  
+                  # Generate 8-character random suffix
+                  suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+                  
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                      'Suffix': suffix
+                  })
+              except Exception as e:
+                  print(f"Error: {e}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  RandomSuffixFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # Secrets Manager secret for La Marzocco credentials
+  LaMarzoccoCredentials:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${ProjectName}-credentials-${RandomSuffix.Suffix}'
+      Description: La Marzocco Cloud API credentials
+      SecretString: !Sub |
+        {
+          "username": "${LaMarzoccoUsername}",
+          "password": "${LaMarzoccoPassword}"
+        }
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: cloudformation
+
+  # S3 bucket for static website hosting
+  DashboardBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-${RandomSuffix.Suffix}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: cloudformation
+
+  # CloudFront Origin Access Control
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${ProjectName}-oac'
+        Description: !Sub 'OAC for ${ProjectName}'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # S3 bucket policy for CloudFront OAC
+  DashboardBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DashboardBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipal
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${DashboardBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                'AWS:SourceArn': !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+
+  # Look up existing Route53 hosted zone (no creation, only lookup)
+  HostedZoneLookup:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt HostedZoneLookupFunction.Arn
+      DomainName: !Ref DomainName
+
+  HostedZoneLookupFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-hosted-zone-lookup'
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt HostedZoneLookupRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          
+          def handler(event, context):
+              try:
+                  print(f"Event: {json.dumps(event)}")
+                  
+                  if event['RequestType'] == 'Delete':
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      return
+                  
+                  route53 = boto3.client('route53')
+                  domain_name = event['ResourceProperties']['DomainName']
+                  
+                  print(f"Looking for hosted zone for domain: {domain_name}")
+                  
+                  # List hosted zones and find the best matching one (longest match for subdomains)
+                  response = route53.list_hosted_zones()
+                  best_match = None
+                  
+                  for zone in response['HostedZones']:
+                      zone_name = zone['Name'].rstrip('.')  # Remove trailing dot
+                      print(f"Checking zone: {zone_name}")
+                      
+                      # Check if domain matches exactly or is a subdomain of this zone
+                      if domain_name == zone_name or domain_name.endswith('.' + zone_name):
+                          if not best_match or len(zone_name) > len(best_match['Name'].rstrip('.')):
+                              best_match = zone
+                              print(f"New best match: {zone_name}")
+                  
+                  if best_match:
+                      zone_id = best_match['Id'].split('/')[-1]  # Extract just the ID part
+                      zone_name = best_match['Name'].rstrip('.')
+                      print(f"Found best matching hosted zone: {zone_name} -> {zone_id}")
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                          'HostedZoneId': zone_id,
+                          'HostedZoneName': zone_name
+                      })
+                      return
+                  
+                  # If not found, return error
+                  available_zones = [z['Name'].rstrip('.') for z in response['HostedZones']]
+                  error_msg = f"No hosted zone found for {domain_name}. Available zones: {available_zones}"
+                  print(error_msg)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {}, error_msg)
+                  
+              except Exception as e:
+                  error_msg = f"Error looking up hosted zone: {str(e)}"
+                  print(error_msg)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {}, error_msg)
+
+  HostedZoneLookupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: Route53Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - route53:ListHostedZones
+                Resource: '*'
+
+  # ACM Certificate in us-east-1 (required for CloudFront)
+  SSLCertificate:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt CertificateFunction.Arn
+      DomainName: !Ref DomainName
+      HostedZoneId: !GetAtt HostedZoneLookup.HostedZoneId
+    DependsOn: HostedZoneLookup
+
+  CertificateFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-certificate-manager'
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt CertificateFunctionRole.Arn
+      Timeout: 300
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          import time
+          
+          def handler(event, context):
+              try:
+                  print(f"Event: {json.dumps(event)}")
+                  
+                  # Always use us-east-1 for CloudFront certificates
+                  acm = boto3.client('acm', region_name='us-east-1')
+                  route53 = boto3.client('route53')
+                  
+                  domain_name = event['ResourceProperties']['DomainName']
+                  hosted_zone_id = event['ResourceProperties']['HostedZoneId']
+                  
+                  if event['RequestType'] == 'Delete':
+                      # Clean up DNS validation record and certificate
+                      if 'PhysicalResourceId' in event and event['PhysicalResourceId'].startswith('arn:'):
+                          try:
+                              # Get certificate details to find validation record
+                              cert_details = acm.describe_certificate(CertificateArn=event['PhysicalResourceId'])
+                              if 'DomainValidationOptions' in cert_details['Certificate']:
+                                  validation_options = cert_details['Certificate']['DomainValidationOptions']
+                                  if validation_options and 'ResourceRecord' in validation_options[0]:
+                                      validation_record = validation_options[0]['ResourceRecord']
+                                      print(f"Cleaning up DNS validation record: {validation_record['Name']}")
+                                      
+                                      # Delete the validation record
+                                      route53.change_resource_record_sets(
+                                          HostedZoneId=hosted_zone_id,
+                                          ChangeBatch={
+                                              'Changes': [{
+                                                  'Action': 'DELETE',
+                                                  'ResourceRecordSet': {
+                                                      'Name': validation_record['Name'],
+                                                      'Type': validation_record['Type'],
+                                                      'TTL': 60,
+                                                      'ResourceRecords': [{'Value': validation_record['Value']}]
+                                                  }
+                                              }]
+                                          }
+                                      )
+                              
+                              # Delete the certificate
+                              acm.delete_certificate(CertificateArn=event['PhysicalResourceId'])
+                              print(f"Deleted certificate: {event['PhysicalResourceId']}")
+                          except Exception as e:
+                              print(f"Error during cleanup: {e}")
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      return
+                  
+                  # Request certificate
+                  print(f"Requesting certificate for {domain_name}")
+                  response = acm.request_certificate(
+                      DomainName=domain_name,
+                      ValidationMethod='DNS',
+                      Options={
+                          'CertificateTransparencyLoggingPreference': 'ENABLED'
+                      }
+                  )
+                  
+                  cert_arn = response['CertificateArn']
+                  print(f"Certificate requested: {cert_arn}")
+                  
+                  # Wait for validation options to be available
+                  for i in range(30):  # Wait up to 5 minutes
+                      try:
+                          cert_details = acm.describe_certificate(CertificateArn=cert_arn)
+                          if 'DomainValidationOptions' in cert_details['Certificate']:
+                              validation_options = cert_details['Certificate']['DomainValidationOptions']
+                              if validation_options and 'ResourceRecord' in validation_options[0]:
+                                  break
+                      except Exception as e:
+                          print(f"Waiting for validation options: {e}")
+                      time.sleep(10)
+                  
+                  # Create DNS validation record in the correct hosted zone
+                  validation_record = validation_options[0]['ResourceRecord']
+                  print(f"Creating DNS validation record: {validation_record['Name']} in zone {hosted_zone_id}")
+                  
+                  # The validation record name might be for the subdomain, but we need to create it in the parent zone
+                  record_name = validation_record['Name']
+                  print(f"Validation record name: {record_name}")
+                  
+                  route53.change_resource_record_sets(
+                      HostedZoneId=hosted_zone_id,
+                      ChangeBatch={
+                          'Changes': [{
+                              'Action': 'UPSERT',
+                              'ResourceRecordSet': {
+                                  'Name': record_name,
+                                  'Type': validation_record['Type'],
+                                  'TTL': 60,
+                                  'ResourceRecords': [{'Value': validation_record['Value']}]
+                              }
+                          }]
+                      }
+                  )
+                  
+                  print(f"DNS validation record created, waiting for certificate validation...")
+                  
+                  # Wait for certificate to be validated (up to 10 minutes)
+                  waiter = acm.get_waiter('certificate_validated')
+                  waiter.wait(
+                      CertificateArn=cert_arn,
+                      WaiterConfig={'Delay': 30, 'MaxAttempts': 20}
+                  )
+                  
+                  print(f"Certificate validated: {cert_arn}")
+                  
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                      'CertificateArn': cert_arn
+                  }, cert_arn)
+                  
+              except Exception as e:
+                  error_msg = f"Error managing certificate: {str(e)}"
+                  print(error_msg)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {}, error_msg)
+
+  CertificateFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CertificateManagement
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - acm:RequestCertificate
+                  - acm:DescribeCertificate
+                  - acm:DeleteCertificate
+                  - acm:ListCertificates
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - route53:ChangeResourceRecordSets
+                  - route53:GetChange
+                Resource: '*'
+
+  # CloudFront distribution
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref DomainName
+        Comment: La Marzocco Dashboard CloudFront Distribution
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: !Sub 'S3-${DashboardBucket}'
+            DomainName: !GetAtt DashboardBucket.RegionalDomainName
+            OriginAccessControlId: !Ref CloudFrontOAC
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        DefaultCacheBehavior:
+          TargetOriginId: !Sub 'S3-${DashboardBucket}'
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          MinTTL: 0
+          DefaultTTL: 300
+          MaxTTL: 86400
+        CacheBehaviors:
+          - PathPattern: '/data.json'
+            TargetOriginId: !Sub 'S3-${DashboardBucket}'
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            MinTTL: 0
+            DefaultTTL: 60
+            MaxTTL: 300
+        Restrictions:
+          GeoRestriction:
+            RestrictionType: none
+        ViewerCertificate:
+          AcmCertificateArn: !GetAtt SSLCertificate.CertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: cloudformation
+
+  # Route53 record for the domain
+  DomainRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !GetAtt HostedZoneLookup.HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2  # CloudFront hosted zone ID
+
+  # IAM role for Lambda function
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DashboardLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                  - s3:GetObject
+                Resource: !Sub '${DashboardBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref LaMarzoccoCredentials
+              - Effect: Allow
+                Action:
+                  - cloudfront:CreateInvalidation
+                  - cloudfront:GetInvalidation
+                  - cloudfront:ListInvalidations
+                Resource: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: cloudformation
+
+  # CloudWatch Log Group for Lambda
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-updater'
+      RetentionInDays: 14
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: cloudformation
+
+  # Lambda function
+  DashboardUpdaterFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-updater'
+      Description: !Sub 'La Marzocco Dashboard Updater - Updated ${AWS::StackName}'
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Code:
+        ZipFile: |
+          # Placeholder code - will be replaced during deployment
+          import json
+          def lambda_handler(event, context):
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Placeholder function - deploy with actual code')
+              }
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref DashboardBucket
+          LAMARZOCCO_SECRET_NAME: !Ref LaMarzoccoCredentials
+          CLOUDFRONT_DISTRIBUTION_ID: !Ref CloudFrontDistribution
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: cloudformation
+
+  # EventBridge rule for scheduled execution
+  DashboardScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-schedule'
+      Description: Trigger dashboard update every 5 minutes
+      ScheduleExpression: 'rate(5 minutes)'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt DashboardUpdaterFunction.Arn
+          Id: DashboardLambdaTarget
+
+  # Lambda permission for EventBridge
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DashboardUpdaterFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DashboardScheduleRule.Arn
+
+Outputs:
+  DashboardURL:
+    Description: URL of the dashboard
+    Value: !Sub 'https://${DomainName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-DashboardURL'
+
+  S3BucketName:
+    Description: Name of the S3 bucket
+    Value: !Ref DashboardBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-S3BucketName'
+
+  CloudFrontDistributionId:
+    Description: CloudFront distribution ID
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDistributionId'
+
+  CloudFrontDomainName:
+    Description: CloudFront distribution domain name
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDomainName'
+
+  LambdaFunctionName:
+    Description: Name of the Lambda function
+    Value: !Ref DashboardUpdaterFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaFunctionName'
+
+  LambdaFunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt DashboardUpdaterFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaFunctionArn'
+
+  SecretsManagerSecretName:
+    Description: Name of the Secrets Manager secret
+    Value: !Ref LaMarzoccoCredentials
+    Export:
+      Name: !Sub '${AWS::StackName}-SecretsManagerSecretName'
+
+  EventBridgeRuleName:
+    Description: Name of the EventBridge rule
+    Value: !Ref DashboardScheduleRule
+    Export:
+      Name: !Sub '${AWS::StackName}-EventBridgeRuleName'
