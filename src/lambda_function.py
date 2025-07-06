@@ -421,6 +421,7 @@ class LaMarzoccoDashboard:
             pointer-events: none;
             z-index: -1;
             overflow: hidden;
+            background: transparent;
         }
         
         .matrix-column {
@@ -432,6 +433,7 @@ class LaMarzoccoDashboard:
             animation: matrix-fall linear infinite;
             font-family: monospace;
             white-space: pre;
+            background: transparent;
         }
         
         @keyframes matrix-fall {
@@ -650,16 +652,38 @@ class LaMarzoccoDashboard:
             body {
                 padding: 10px;
                 font-size: 14px;
+                background: linear-gradient(135deg, #2c1810 0%, #1a0f08 100%) !important;
+                background-attachment: fixed;
+            }
+            
+            .matrix-background {
+                background: transparent !important;
+            }
+            
+            .matrix-column {
+                background: transparent !important;
+                font-size: 14px;
+                line-height: 18px;
             }
             
             .container {
                 max-width: 100%;
                 padding: 0;
+                background: transparent;
+                position: relative;
+                z-index: 1;
             }
             
             .header {
                 padding: 20px;
                 margin-bottom: 20px;
+                background: rgba(255, 255, 255, 0.05) !important;
+                backdrop-filter: blur(10px);
+            }
+            
+            .card {
+                background: rgba(255, 255, 255, 0.05) !important;
+                backdrop-filter: blur(10px);
             }
             
             .header h1 {
