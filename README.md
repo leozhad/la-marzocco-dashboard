@@ -70,8 +70,8 @@ cp .env.example .env
 
 Edit `.env` with your credentials:
 ```bash
-AWS_REGION=us-west-2
-DOMAIN_NAME=espresso.leozh.net
+AWS_REGION=<your-aws-region>
+DOMAIN_NAME=<your-domain-name>
 ```
 
 **Note**: La Marzocco credentials are stored securely in AWS Secrets Manager, not in `.env` files.
@@ -95,7 +95,7 @@ After the pipeline is deployed, you need to add your La Marzocco credentials to 
 ```bash
 # Find your secret name (it will be something like la-marzocco-dashboard-credentials-xxxxx)
 AWS_PROFILE=<your-profile-name> aws secretsmanager list-secrets \
-  --region us-west-2 \
+  --region <your-aws-region> \
   --query 'SecretList[?contains(Name, `la-marzocco-dashboard-credentials`)].Name' \
   --output text
 
@@ -103,10 +103,10 @@ AWS_PROFILE=<your-profile-name> aws secretsmanager list-secrets \
 AWS_PROFILE=<your-profile-name> aws secretsmanager update-secret \
   --secret-id <secret-name-from-above> \
   --secret-string '{"username":"your-lamarzocco-username","password":"your-lamarzocco-password"}' \
-  --region us-west-2
+  --region <your-aws-region>
 ```
 
-**Important**: Replace `<your-profile-name>` with your AWS CLI profile name and use your actual La Marzocco Cloud credentials.
+**Important**: Replace `<your-profile-name>` with your AWS CLI profile name, `<your-aws-region>` with your deployment region, and use your actual La Marzocco Cloud credentials.
 
 ### 4. Deploy Application (via Git)
 
@@ -154,13 +154,13 @@ Visit `https://your-domain.com` (your configured domain)
 ```bash
 AWS_PROFILE=<your-profile> aws codepipeline get-pipeline-state \
   --name la-marzocco-deployment-pipeline-pipeline \
-  --region us-west-2
+  --region <your-aws-region>
 ```
 
 ### View Application Logs
 ```bash
 AWS_PROFILE=<your-profile> aws logs tail /aws/lambda/la-marzocco-dashboard-updater \
-  --region us-west-2 \
+  --region <your-aws-region> \
   --follow
 ```
 
@@ -169,7 +169,7 @@ AWS_PROFILE=<your-profile> aws logs tail /aws/lambda/la-marzocco-dashboard-updat
 AWS_PROFILE=<your-profile> aws lambda invoke \
   --function-name la-marzocco-dashboard-updater \
   --payload '{}' \
-  --region us-west-2 \
+  --region <your-aws-region> \
   response.json && cat response.json | jq .
 ```
 
@@ -178,12 +178,12 @@ AWS_PROFILE=<your-profile> aws lambda invoke \
 # View stack status
 AWS_PROFILE=<your-profile> aws cloudformation describe-stacks \
   --stack-name la-marzocco-dashboard \
-  --region us-west-2
+  --region <your-aws-region>
 
 # View stack resources
 AWS_PROFILE=<your-profile> aws cloudformation list-stack-resources \
   --stack-name la-marzocco-dashboard \
-  --region us-west-2
+  --region <your-aws-region>
 ```
 
 ### Delete Everything
@@ -243,36 +243,64 @@ The dashboard displays comprehensive machine information:
   "machine_info": {
     "name": "Linea Mini",
     "model": "Linea Mini", 
-    "serial_number": "LM123456",
-    "firmware_version": "1.2.3"
+    "serial_number": "LM016332",
+    "firmware_version": "Gateway: 1.2.3, Machine: 4.5.6",
+    "connected": true,
+    "connection_date": "2025-01-15T10:30:00Z",
+    "image_url": "https://..."
   },
   "status": {
     "power_on": true,
-    "water_tank_level": 85,
-    "current_temp": 201.2,
-    "target_temp": 201.6,
-    "heating": false,
-    "brewing": false
+    "mode": "BREWING_MODE",
+    "coffee_boiler_temp": 201.2,
+    "coffee_boiler_ready": true,
+    "coffee_boiler_range": "190-210°F",
+    "steam_boiler_status": "READY",
+    "steam_boiler_enabled": true,
+    "scale_connected": true,
+    "scale_battery": 83,
+    "scale_name": "LMZ-59BD90",
+    "scale_calibration_required": false
   },
   "statistics": {
-    "total_shots": 5047,
-    "total_flushes": 1835,
-    "last_shot_time": "2025-07-05T10:30:00Z",
-    "last_flush_time": "2025-07-05T09:15:00Z"
+    "total_shots": 5051,
+    "total_flushes": 1837,
+    "last_cleaning": "2025-06-15T09:15:00Z"
   },
+  "brewing": {
+    "pre_brewing_mode": "PreInfusion",
+    "pre_brewing_available": ["PreBrewing", "PreInfusion", "Disabled"],
+    "dose_mode": "MassType",
+    "dose_1": 20.0,
+    "dose_2": 30.0,
+    "dose_range": "5-100g"
+  },
+  "recent_shots": [
+    {
+      "time": 1751755324037,
+      "extraction_seconds": 31.1,
+      "dose_value": 20.3,
+      "dose_mode": "MassType",
+      "dose_index": "1"
+    }
+  ],
   "settings": {
-    "auto_on_off": true,
-    "auto_on_time": "07:00",
-    "auto_off_time": "18:00",
-    "dose_hot_water": 5,
-    "dose_tea_water": 8
+    "wifi_ssid": "CoffeeShop-WiFi",
+    "wifi_signal": -45,
+    "plumbed_in": true,
+    "auto_update": true,
+    "smart_standby_enabled": true,
+    "smart_standby_minutes": 30
   },
   "maintenance": {
-    "descaling_needed": false,
-    "cleaning_needed": false,
-    "last_descaling": "2025-06-01",
-    "last_cleaning": "2025-06-15"
-  }
+    "cleaning_status": "READY",
+    "last_cleaning_date": "2025-06-15",
+    "firmware_update_required": false,
+    "firmware_update_available": false
+  },
+  "timestamp": "2025-07-06T08:00:00Z",
+  "collection_method": "La Marzocco Cloud API",
+  "client_version": "pylamarzocco"
 }
 ```
 
@@ -283,13 +311,13 @@ The dashboard displays comprehensive machine information:
 # Check pipeline execution
 AWS_PROFILE=<your-profile> aws codepipeline list-pipeline-executions \
   --pipeline-name la-marzocco-deployment-pipeline-pipeline \
-  --region us-west-2
+  --region <your-aws-region>
 
 # Check CodeBuild logs
 AWS_PROFILE=<your-profile> aws logs filter-log-events \
   --log-group-name /aws/codebuild/la-marzocco-deployment-pipeline-build \
   --start-time $(date -d '1 hour ago' +%s)000 \
-  --region us-west-2
+  --region <your-aws-region>
 ```
 
 ### Stack Deployment Failed
@@ -297,7 +325,7 @@ AWS_PROFILE=<your-profile> aws logs filter-log-events \
 # Check what failed
 AWS_PROFILE=<your-profile> aws cloudformation describe-stack-events \
   --stack-name la-marzocco-dashboard \
-  --region us-west-2 \
+  --region <your-aws-region> \
   --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`]'
 ```
 
@@ -307,7 +335,7 @@ AWS_PROFILE=<your-profile> aws cloudformation describe-stack-events \
 AWS_PROFILE=<your-profile> aws logs filter-log-events \
   --log-group-name /aws/lambda/la-marzocco-dashboard-updater \
   --start-time $(date -d '1 hour ago' +%s)000 \
-  --region us-west-2
+  --region <your-aws-region>
 ```
 
 ### Dashboard Not Loading
@@ -418,19 +446,19 @@ If no profile is specified, scripts use your default AWS CLI profile.
 ### Useful Commands
 ```bash
 # Pipeline operations
-AWS_PROFILE=<your-profile> aws codepipeline list-pipelines --region us-west-2
-AWS_PROFILE=<your-profile> aws codepipeline get-pipeline-state --name pipeline-name --region us-west-2
+AWS_PROFILE=<your-profile> aws codepipeline list-pipelines --region <your-aws-region>
+AWS_PROFILE=<your-profile> aws codepipeline get-pipeline-state --name pipeline-name --region <your-aws-region>
 
 # Stack operations
-AWS_PROFILE=<your-profile> aws cloudformation list-stacks --region us-west-2
+AWS_PROFILE=<your-profile> aws cloudformation list-stacks --region <your-aws-region>
 AWS_PROFILE=<your-profile> aws cloudformation validate-template --template-body file://cloudformation/main.yaml
 
 # Resource inspection
-AWS_PROFILE=<your-profile> aws cloudformation list-stack-resources --stack-name la-marzocco-dashboard --region us-west-2
+AWS_PROFILE=<your-profile> aws cloudformation list-stack-resources --stack-name la-marzocco-dashboard --region <your-aws-region>
 
 # Monitoring
-AWS_PROFILE=<your-profile> aws logs describe-log-groups --log-group-name-prefix /aws/lambda/la-marzocco --region us-west-2
-AWS_PROFILE=<your-profile> aws events list-rules --name-prefix la-marzocco --region us-west-2
+AWS_PROFILE=<your-profile> aws logs describe-log-groups --log-group-name-prefix /aws/lambda/la-marzocco --region <your-aws-region>
+AWS_PROFILE=<your-profile> aws events list-rules --name-prefix la-marzocco --region <your-aws-region>
 ```
 
 ---
