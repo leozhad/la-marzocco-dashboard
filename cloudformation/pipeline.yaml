@@ -319,6 +319,9 @@ Resources:
         ZipFile: |
           import json
           import boto3
+          import zipfile
+          import tempfile
+          import os
           
           def lambda_handler(event, context):
               try:
@@ -331,24 +334,50 @@ Resources:
                   bucket = location['bucketName']
                   key = location['objectKey']
                   
-                  # Update Lambda function code
+                  print(f"Processing artifact from s3://{bucket}/{key}")
+                  
+                  # Initialize clients
                   lambda_client = boto3.client('lambda')
                   s3_client = boto3.client('s3')
                   codepipeline_client = boto3.client('codepipeline')
                   
-                  # Download the deployment package
-                  response = s3_client.get_object(Bucket=bucket, Key=key)
-                  
-                  # Extract and find the lambda deployment package
-                  # This is a simplified version - in practice you'd extract the zip
-                  # and find the lambda-deployment-package.zip file
-                  
-                  # Update the Lambda function
-                  lambda_client.update_function_code(
-                      FunctionName='la-marzocco-dashboard-updater',
-                      S3Bucket=bucket,
-                      S3Key=key
-                  )
+                  # Download the build artifact
+                  with tempfile.NamedTemporaryFile() as temp_file:
+                      s3_client.download_fileobj(bucket, key, temp_file)
+                      temp_file.seek(0)
+                      
+                      # Extract the artifact and find lambda-deployment-package.zip
+                      with tempfile.TemporaryDirectory() as temp_dir:
+                          with zipfile.ZipFile(temp_file, 'r') as zip_ref:
+                              zip_ref.extractall(temp_dir)
+                          
+                          # Look for lambda-deployment-package.zip
+                          lambda_package_path = os.path.join(temp_dir, 'lambda-deployment-package.zip')
+                          
+                          if os.path.exists(lambda_package_path):
+                              print(f"Found lambda deployment package at {lambda_package_path}")
+                              
+                              # Read the lambda deployment package
+                              with open(lambda_package_path, 'rb') as lambda_zip:
+                                  lambda_zip_content = lambda_zip.read()
+                              
+                              # Update the Lambda function with the deployment package
+                              response = lambda_client.update_function_code(
+                                  FunctionName='la-marzocco-dashboard-updater',
+                                  ZipFile=lambda_zip_content
+                              )
+                              
+                              print(f"Lambda function updated successfully. New CodeSha256: {response.get('CodeSha256', 'Unknown')}")
+                          else:
+                              # List available files for debugging
+                              available_files = []
+                              for root, dirs, files in os.walk(temp_dir):
+                                  for file in files:
+                                      available_files.append(os.path.relpath(os.path.join(root, file), temp_dir))
+                              
+                              error_msg = f"lambda-deployment-package.zip not found. Available files: {available_files}"
+                              print(error_msg)
+                              raise Exception(error_msg)
                   
                   # Signal success to CodePipeline
                   codepipeline_client.put_job_success_result(jobId=job_id)
