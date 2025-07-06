@@ -407,6 +407,60 @@ class LaMarzoccoDashboard:
             color: #f5f5f5;
             min-height: 100vh;
             padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        /* Matrix-style coffee emoji background */
+        .matrix-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+        }
+        
+        .matrix-column {
+            position: absolute;
+            top: -100px;
+            font-size: 20px;
+            line-height: 25px;
+            color: rgba(212, 175, 55, 0.3);
+            animation: matrix-fall linear infinite;
+            font-family: monospace;
+        }
+        
+        @keyframes matrix-fall {
+            0% {
+                transform: translateY(-100px);
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(calc(100vh + 100px));
+                opacity: 0;
+            }
+        }
+        
+        /* Fade different columns at different rates for variety */
+        .matrix-column:nth-child(odd) {
+            color: rgba(139, 69, 19, 0.4);
+            animation-duration: 8s;
+        }
+        
+        .matrix-column:nth-child(even) {
+            color: rgba(212, 175, 55, 0.3);
+            animation-duration: 12s;
+        }
+        
+        .matrix-column:nth-child(3n) {
+            color: rgba(160, 82, 45, 0.35);
+            animation-duration: 10s;
         }
         
         .container {
@@ -809,6 +863,9 @@ class LaMarzoccoDashboard:
     </style>
 </head>
 <body>
+    <!-- Matrix-style coffee emoji background -->
+    <div class="matrix-background" id="matrix-bg"></div>
+    
     <div class="container">
         <div class="header">
             <h1>☕ {{ machine_info.name }}</h1>
@@ -1264,6 +1321,98 @@ class LaMarzoccoDashboard:
         
         // Convert shot timestamps on page load
         convertShotTimestamps();
+        
+        // Coffee Matrix Background Animation
+        function createCoffeeMatrix() {
+            const matrixBg = document.getElementById('matrix-bg');
+            if (!matrixBg) return;
+            
+            // Coffee and espresso related emojis
+            const coffeeEmojis = [
+                '☕', '🫘', '🥤', '🧋', '🍵', '🫖', 
+                '🥛', '🍼', '🧊', '🔥', '💧', '⚡',
+                '🌡️', '⏰', '🎯', '📊', '⚖️', '🔧',
+                '🎛️', '📈', '💎', '✨', '🌟', '⭐'
+            ];
+            
+            // Calculate number of columns based on screen width
+            const columnWidth = 30;
+            const numColumns = Math.floor(window.innerWidth / columnWidth);
+            
+            // Create columns
+            for (let i = 0; i < numColumns; i++) {
+                createMatrixColumn(i * columnWidth, coffeeEmojis);
+            }
+            
+            // Recreate columns periodically for continuous effect
+            setInterval(() => {
+                // Randomly create new columns
+                if (Math.random() < 0.3) {
+                    const randomX = Math.random() * window.innerWidth;
+                    createMatrixColumn(randomX, coffeeEmojis);
+                }
+                
+                // Clean up old columns
+                const columns = matrixBg.querySelectorAll('.matrix-column');
+                columns.forEach(column => {
+                    const rect = column.getBoundingClientRect();
+                    if (rect.top > window.innerHeight + 100) {
+                        column.remove();
+                    }
+                });
+            }, 2000);
+        }
+        
+        function createMatrixColumn(x, emojis) {
+            const matrixBg = document.getElementById('matrix-bg');
+            if (!matrixBg) return;
+            
+            const column = document.createElement('div');
+            column.className = 'matrix-column';
+            column.style.left = x + 'px';
+            
+            // Create a string of random coffee emojis
+            const columnHeight = Math.floor(Math.random() * 20) + 10; // 10-30 emojis per column
+            let emojiString = '';
+            
+            for (let i = 0; i < columnHeight; i++) {
+                const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+                emojiString += randomEmoji + '\\n';
+            }
+            
+            column.textContent = emojiString;
+            
+            // Random animation duration for variety
+            const duration = Math.random() * 8 + 6; // 6-14 seconds
+            column.style.animationDuration = duration + 's';
+            
+            // Random delay for staggered effect
+            const delay = Math.random() * 3;
+            column.style.animationDelay = delay + 's';
+            
+            matrixBg.appendChild(column);
+            
+            // Remove column after animation completes
+            setTimeout(() => {
+                if (column.parentNode) {
+                    column.remove();
+                }
+            }, (duration + delay + 1) * 1000);
+        }
+        
+        // Initialize coffee matrix on page load
+        createCoffeeMatrix();
+        
+        // Recreate matrix on window resize
+        window.addEventListener('resize', () => {
+            const matrixBg = document.getElementById('matrix-bg');
+            if (matrixBg) {
+                // Clear existing columns
+                matrixBg.innerHTML = '';
+                // Recreate matrix with new dimensions
+                setTimeout(createCoffeeMatrix, 100);
+            }
+        });
         
         // Create Usage Statistics Pie Chart
         const usageCtx = document.getElementById('usageChart');
