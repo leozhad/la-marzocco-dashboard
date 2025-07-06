@@ -272,7 +272,7 @@ Resources:
                 Version: '1'
               Configuration:
                 ActionMode: CHANGE_SET_REPLACE
-                StackName: !Sub '${AWS::StackName}-dashboard'
+                StackName: la-marzocco-dashboard
                 ChangeSetName: !Sub '${AWS::StackName}-changeset'
                 TemplatePath: BuildOutput::cloudformation/main.yaml
                 ParameterOverrides: !Sub |
@@ -295,7 +295,7 @@ Resources:
                 Version: '1'
               Configuration:
                 ActionMode: CHANGE_SET_EXECUTE
-                StackName: !Sub '${AWS::StackName}-dashboard'
+                StackName: la-marzocco-dashboard
                 ChangeSetName: !Sub '${AWS::StackName}-changeset'
               RunOrder: 2
 
