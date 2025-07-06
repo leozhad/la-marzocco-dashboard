@@ -94,10 +94,10 @@ This creates the CI/CD pipeline that will automatically deploy your application 
 After the pipeline is deployed, you need to add your La Marzocco credentials to AWS Secrets Manager:
 
 ```bash
-# Find your secret name (it will be something like la-marzocco-dashboard-credentials-xxxxx)
+# Find your secret name (it will be something like la-marzocco-deployment-pipeline-lamarzocco-credentials)
 aws secretsmanager list-secrets \
   --region $AWS_REGION \
-  --query 'SecretList[?contains(Name, `la-marzocco-dashboard-credentials`)].Name' \
+  --query 'SecretList[?contains(Name, `lamarzocco-credentials`)].Name' \
   --output text
 
 # Update the secret with your La Marzocco credentials
@@ -108,6 +108,8 @@ aws secretsmanager update-secret \
 ```
 
 **Important**: Replace `<your-profile-name>` with your AWS CLI profile name, `<your-aws-region>` with your deployment region, and use your actual La Marzocco Cloud credentials.
+
+**Note**: The pipeline creates a single shared secret that both the deployment process and the Lambda function use, avoiding duplicate credential storage.
 
 ### 4. Deploy Application (via Git)
 

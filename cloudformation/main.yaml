@@ -22,15 +22,9 @@ Parameters:
       - staging
       - production
   
-  LaMarzoccoUsername:
+  LaMarzoccoSecretName:
     Type: String
-    Description: La Marzocco Cloud username
-    NoEcho: true
-  
-  LaMarzoccoPassword:
-    Type: String
-    Description: La Marzocco Cloud password
-    NoEcho: true
+    Description: Name of the Secrets Manager secret containing La Marzocco credentials
 
 Resources:
   # Random suffix for unique resource names
@@ -81,25 +75,6 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-
-  # Secrets Manager secret for La Marzocco credentials
-  LaMarzoccoCredentials:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: !Sub '${ProjectName}-credentials-${RandomSuffix.Suffix}'
-      Description: La Marzocco Cloud API credentials
-      SecretString: !Sub |
-        {
-          "username": "${LaMarzoccoUsername}",
-          "password": "${LaMarzoccoPassword}"
-        }
-      Tags:
-        - Key: Project
-          Value: !Ref ProjectName
-        - Key: Environment
-          Value: !Ref Environment
-        - Key: ManagedBy
-          Value: cloudformation
 
   # S3 bucket for static website hosting
   DashboardBucket:
@@ -521,7 +496,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
-                Resource: !Ref LaMarzoccoCredentials
+                Resource: !Ref LaMarzoccoSecretName
               - Effect: Allow
                 Action:
                   - cloudfront:CreateInvalidation
@@ -573,7 +548,7 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET_NAME: !Ref DashboardBucket
-          LAMARZOCCO_SECRET_NAME: !Ref LaMarzoccoCredentials
+          LAMARZOCCO_SECRET_NAME: !Ref LaMarzoccoSecretName
           CLOUDFRONT_DISTRIBUTION_ID: !Ref CloudFrontDistribution
       Tags:
         - Key: Project
@@ -643,7 +618,7 @@ Outputs:
 
   SecretsManagerSecretName:
     Description: Name of the Secrets Manager secret
-    Value: !Ref LaMarzoccoCredentials
+    Value: !Ref LaMarzoccoSecretName
     Export:
       Name: !Sub '${AWS::StackName}-SecretsManagerSecretName'
 

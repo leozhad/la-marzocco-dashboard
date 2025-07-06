@@ -45,6 +45,23 @@ Resources:
             Status: Enabled
             ExpirationInDays: 30
 
+  # Secrets Manager secret for La Marzocco credentials (shared between pipeline and app)
+  LaMarzoccoCredentials:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AWS::StackName}-lamarzocco-credentials'
+      Description: La Marzocco Cloud API credentials (shared secret)
+      SecretString: !Sub |
+        {
+          "username": "PLACEHOLDER_USERNAME",
+          "password": "PLACEHOLDER_PASSWORD"
+        }
+      Tags:
+        - Key: Project
+          Value: la-marzocco-dashboard
+        - Key: ManagedBy
+          Value: Pipeline
+
   # CodeBuild Service Role
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
@@ -159,7 +176,7 @@ Resources:
                 Action:
                   - secretsmanager:GetSecretValue
                 Resource: 
-                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:la-marzocco-pipeline-credentials-*'
+                  - !Ref LaMarzoccoCredentials
                   - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:la-marzocco-github-token-*'
 
   # CodePipeline Service Role
@@ -273,8 +290,7 @@ Resources:
                 ParameterOverrides: !Sub |
                   {
                     "DomainName": "${DomainName}",
-                    "LaMarzoccoUsername": "{{resolve:secretsmanager:la-marzocco-pipeline-credentials:SecretString:username}}",
-                    "LaMarzoccoPassword": "{{resolve:secretsmanager:la-marzocco-pipeline-credentials:SecretString:password}}"
+                    "LaMarzoccoSecretName": "${LaMarzoccoCredentials}"
                   }
                 Capabilities: CAPABILITY_NAMED_IAM
                 RoleArn: !GetAtt CloudFormationServiceRole.Arn
@@ -442,6 +458,12 @@ Outputs:
   PipelineUrl:
     Description: URL of the CodePipeline in AWS Console
     Value: !Sub 'https://console.aws.amazon.com/codesuite/codepipeline/pipelines/${Pipeline}/view'
+
+  LaMarzoccoSecretName:
+    Description: Name of the shared La Marzocco credentials secret
+    Value: !Ref LaMarzoccoCredentials
+    Export:
+      Name: !Sub '${AWS::StackName}-LaMarzoccoSecretName'
     Export:
       Name: !Sub '${AWS::StackName}-PipelineUrl'
   
