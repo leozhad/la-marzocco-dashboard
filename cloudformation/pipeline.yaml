@@ -26,16 +26,6 @@ Parameters:
     Type: String
     Description: Domain name for the dashboard
     Default: espresso.leozh.net
-  
-  LaMarzoccoUsername:
-    Type: String
-    Description: La Marzocco username
-    NoEcho: true
-  
-  LaMarzoccoPassword:
-    Type: String
-    Description: La Marzocco password
-    NoEcho: true
 
 Resources:
   # S3 Bucket for CodePipeline artifacts
@@ -170,6 +160,11 @@ Resources:
                   - iam:AddRoleToInstanceProfile
                   - iam:RemoveRoleFromInstanceProfile
                 Resource: '*'
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: 
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:la-marzocco-pipeline-credentials-*'
 
   # CodePipeline Service Role
   CodePipelineServiceRole:
@@ -282,8 +277,8 @@ Resources:
                 ParameterOverrides: !Sub |
                   {
                     "DomainName": "${DomainName}",
-                    "LaMarzoccoUsername": "${LaMarzoccoUsername}",
-                    "LaMarzoccoPassword": "${LaMarzoccoPassword}"
+                    "LaMarzoccoUsername": "{{resolve:secretsmanager:la-marzocco-pipeline-credentials:SecretString:username}}",
+                    "LaMarzoccoPassword": "{{resolve:secretsmanager:la-marzocco-pipeline-credentials:SecretString:password}}"
                   }
                 Capabilities: CAPABILITY_NAMED_IAM
                 RoleArn: !GetAtt CloudFormationServiceRole.Arn

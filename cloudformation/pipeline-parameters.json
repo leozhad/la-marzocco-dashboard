@@ -18,13 +18,5 @@
   {
     "ParameterKey": "DomainName",
     "ParameterValue": "espresso.leozh.net"
-  },
-  {
-    "ParameterKey": "LaMarzoccoUsername",
-    "ParameterValue": "***REMOVED***"
-  },
-  {
-    "ParameterKey": "LaMarzoccoPassword",
-    "ParameterValue": "***REMOVED***"
   }
 ]

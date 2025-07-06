@@ -10,13 +10,5 @@
   {
     "ParameterKey": "Environment",
     "ParameterValue": "production"
-  },
-  {
-    "ParameterKey": "LaMarzoccoUsername",
-    "ParameterValue": "***REMOVED***"
-  },
-  {
-    "ParameterKey": "LaMarzoccoPassword",
-    "ParameterValue": "***REMOVED***"
   }
 ]
