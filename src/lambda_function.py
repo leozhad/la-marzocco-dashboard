@@ -390,6 +390,8 @@ class LaMarzoccoDashboard:
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="La Marzocco">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23d4af37'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='%231a0f08'>☕</text></svg>">
     <title>{{ machine_info.name }} Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -432,6 +434,18 @@ class LaMarzoccoDashboard:
             font-size: 1.2em;
             color: #ccc;
             margin-bottom: 15px;
+        }
+        
+        .machine-image {
+            margin: 20px 0;
+        }
+        
+        .machine-image img {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            object-fit: contain;
         }
         
         .status-indicator {
@@ -793,6 +807,11 @@ class LaMarzoccoDashboard:
         <div class="header">
             <h1>☕ {{ machine_info.name }}</h1>
             <div class="subtitle">{{ machine_info.model }} • Serial: {{ machine_info.serial_number }}</div>
+            {% if machine_info.image_url %}
+            <div class="machine-image">
+                <img src="{{ machine_info.image_url }}" alt="{{ machine_info.name }}" onerror="this.style.display='none'">
+            </div>
+            {% endif %}
             <div class="status-indicator {% if status.power_on %}status-on{% else %}status-off{% endif %}">
                 {% if status.power_on %}Machine On{% else %}Machine Off{% endif %}
             </div>
