@@ -2,36 +2,7 @@
 
 A serverless web dashboard for monitoring your La Marzocco Linea Mini espresso machine, built with AWS Lambda and the La Marzocco Cloud API.
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        AWS Cloud                                │
-│                                                                 │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────┐ │
-│  │ EventBridge     │    │ Lambda Function │    │ S3 Bucket   │ │
-│  │ (Every 5 min)   │───▶│ - pylamarzocco  │───▶│ Static Site │ │
-│  └─────────────────┘    │ - Data Collect  │    │ JSON + HTML │ │
-│                         │ - Generate HTML │    └─────────────┘ │
-│                         └─────────────────┘           │        │
-│                                  │                    │        │
-│                         ┌─────────────────┐    ┌─────────────┐ │
-│                         │ Secrets Manager │    │ CloudFront  │ │
-│                         │ - LM Credentials│    │ CDN + SSL   │ │
-│                         └─────────────────┘    └─────────────┘ │
-│                                                       │        │
-│  ┌─────────────────────────────────────────────────────────────┤
-│  │                    Route53 DNS                              │
-│  └─────────────────────────────────────────────────────────────┘
-└─────────────────────────────────────────────────────────────────┘
-                                    │
-                         ┌─────────────────┐
-                         │     Users       │
-                         │   Browser       │
-                         │ espresso.leozh  │
-                         │     .net        │
-                         └─────────────────┘
-```
+![Application Architecture](generated-diagrams/application-architecture.png)
 
 ## Features
 
@@ -50,9 +21,35 @@ A serverless web dashboard for monitoring your La Marzocco Linea Mini espresso m
 - **💰 Cost Effective**: Pay only when function runs (~$1.70/month)
 - **🔒 Secure**: Credentials in AWS Secrets Manager, HTTPS only
 - **⚡ Fast**: Global CDN with CloudFront
-- **🔄 Automated**: Updates every 5 minutes automatically
+- **🔄 Automated**: Updates every 5 minutes automatically via GitOps
 - **📱 Responsive**: Works on desktop and mobile
 - **🛠️ Zero Maintenance**: Fully AWS managed infrastructure
+
+## Architecture
+
+### Application Architecture
+
+The dashboard uses a serverless architecture with the following components:
+
+- **EventBridge**: Triggers Lambda function every 5 minutes
+- **Lambda**: Collects data from La Marzocco API and generates HTML
+- **S3**: Hosts static website files (HTML + JSON)
+- **CloudFront**: Global CDN with SSL termination
+- **Route53**: DNS management for custom domain
+- **Secrets Manager**: Secure storage for La Marzocco credentials
+- **CloudWatch**: Logging and monitoring
+
+### CI/CD Pipeline Architecture
+
+![CI/CD Pipeline Architecture](generated-diagrams/cicd-pipeline-architecture.png)
+
+The project uses GitOps for deployment:
+
+1. **Developer** commits code to GitHub
+2. **CodePipeline** automatically detects changes
+3. **CodeBuild** packages Lambda function with dependencies
+4. **CloudFormation** updates infrastructure and Lambda code
+5. **Dashboard** is automatically updated
 
 ## Quick Start
 
@@ -73,28 +70,42 @@ cp .env.example .env
 
 Edit `.env` with your credentials:
 ```bash
-LAMARZOCCO_USERNAME=your_lamarzocco_username
-LAMARZOCCO_PASSWORD=your_lamarzocco_password
 AWS_REGION=us-west-2
 DOMAIN_NAME=espresso.leozh.net
 ```
 
-### 2. Deploy Everything
+**Note**: La Marzocco credentials are stored securely in AWS Secrets Manager, not in `.env` files.
+
+### 2. Deploy CI/CD Pipeline
 
 ```bash
-./deploy.sh
+# Set your AWS profile
+export AWS_PROFILE=your-profile-name
+
+# Deploy the CodePipeline
+./deploy-pipeline.sh
 ```
 
-This single command will:
-- ✅ Create Lambda deployment package with dependencies
-- ✅ Deploy CloudFormation stack with all AWS resources
-- ✅ Update Lambda function code
-- ✅ Test the deployment
-- ✅ Provide monitoring and management commands
+This creates the CI/CD pipeline that will automatically deploy your application from GitHub.
 
-### 3. Access Dashboard
+### 3. Deploy Application (via Git)
 
-Visit `https://espresso.leozh.net` (or your configured domain)
+```bash
+# Make any changes to your code
+git add .
+git commit -m "Initial deployment"
+git push origin main
+```
+
+The CodePipeline will automatically:
+- Build the Lambda deployment package
+- Deploy/update CloudFormation stack
+- Update Lambda function code
+- Refresh the dashboard
+
+### 4. Access Dashboard
+
+Visit `https://your-domain.com` (your configured domain)
 
 ## What Gets Created
 
@@ -109,44 +120,79 @@ Visit `https://espresso.leozh.net` (or your configured domain)
 - **IAM Roles**: Least privilege access
 - **CloudWatch Logs**: Function monitoring
 
+### CI/CD Resources
+- **CodePipeline**: Automated deployment pipeline
+- **CodeBuild**: Lambda package building
+- **S3 Artifacts Bucket**: Build artifact storage
+- **IAM Roles**: Pipeline execution permissions
+
 ### Monthly Cost: ~$1.70
 
 ## Management
 
-### View Stack Status
+### View Pipeline Status
 ```bash
-aws cloudformation describe-stacks \
-  --stack-name la-marzocco-dashboard \
-  \
+AWS_PROFILE=your-profile aws codepipeline get-pipeline-state \
+  --name la-marzocco-deployment-pipeline-pipeline \
   --region us-west-2
 ```
 
-### Update Stack
+### View Application Logs
 ```bash
-./deploy.sh
-```
-
-### View Logs
-```bash
-aws logs tail /aws/lambda/la-marzocco-dashboard-updater \
-  \
+AWS_PROFILE=your-profile aws logs tail /aws/lambda/la-marzocco-dashboard-updater \
   --region us-west-2 \
   --follow
 ```
 
-### Test Function
+### Test Lambda Function
 ```bash
-aws lambda invoke \
+AWS_PROFILE=your-profile aws lambda invoke \
   --function-name la-marzocco-dashboard-updater \
   --payload '{}' \
-  \
   --region us-west-2 \
   response.json && cat response.json | jq .
+```
+
+### Manual Stack Operations (if needed)
+```bash
+# View stack status
+AWS_PROFILE=your-profile aws cloudformation describe-stacks \
+  --stack-name la-marzocco-dashboard \
+  --region us-west-2
+
+# View stack resources
+AWS_PROFILE=your-profile aws cloudformation list-stack-resources \
+  --stack-name la-marzocco-dashboard \
+  --region us-west-2
 ```
 
 ### Delete Everything
 ```bash
 ./cleanup.sh
+```
+
+## Project Structure
+
+```
+la-marzocco-dashboard/
+├── cloudformation/
+│   ├── main.yaml              # Application CloudFormation template
+│   ├── pipeline.yaml          # CI/CD pipeline CloudFormation template
+│   ├── parameters.json        # Application stack parameters
+│   └── pipeline-parameters.json # Pipeline stack parameters
+├── src/
+│   └── lambda_function.py     # Python Lambda function
+├── generated-diagrams/        # Architecture diagrams
+│   ├── application-architecture.png
+│   └── cicd-pipeline-architecture.png
+├── deploy-pipeline.sh         # Deploy CI/CD pipeline
+├── deploy.sh                  # Manual deployment (legacy)
+├── cleanup.sh                 # Complete cleanup
+├── buildspec.yml              # CodeBuild specification
+├── requirements.txt           # Python dependencies
+├── .env.example              # Environment template
+├── .gitignore                # Git ignore rules
+└── README.md                 # This file
 ```
 
 ## Customization
@@ -159,14 +205,14 @@ DashboardScheduleRule:
     ScheduleExpression: 'rate(10 minutes)'  # Change from 5 minutes
 ```
 
-Then redeploy: `./deploy.sh`
+Then commit and push: `git push origin main`
 
 ### Dashboard Styling
 Edit the HTML template in `src/lambda_function.py` in the `generate_dashboard_html` method.
 
 ### Domain Configuration
 1. Update `DOMAIN_NAME` in `.env`
-2. Redeploy: `./deploy.sh`
+2. Commit and push: `git push origin main`
 
 ## Data Collected
 
@@ -212,12 +258,25 @@ The dashboard displays comprehensive machine information:
 
 ## Troubleshooting
 
+### Pipeline Deployment Failed
+```bash
+# Check pipeline execution
+AWS_PROFILE=your-profile aws codepipeline list-pipeline-executions \
+  --pipeline-name la-marzocco-deployment-pipeline-pipeline \
+  --region us-west-2
+
+# Check CodeBuild logs
+AWS_PROFILE=your-profile aws logs filter-log-events \
+  --log-group-name /aws/codebuild/la-marzocco-deployment-pipeline-build \
+  --start-time $(date -d '1 hour ago' +%s)000 \
+  --region us-west-2
+```
+
 ### Stack Deployment Failed
 ```bash
 # Check what failed
-aws cloudformation describe-stack-events \
+AWS_PROFILE=your-profile aws cloudformation describe-stack-events \
   --stack-name la-marzocco-dashboard \
-  \
   --region us-west-2 \
   --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`]'
 ```
@@ -225,10 +284,9 @@ aws cloudformation describe-stack-events \
 ### Lambda Function Not Working
 ```bash
 # Check recent logs
-aws logs filter-log-events \
+AWS_PROFILE=your-profile aws logs filter-log-events \
   --log-group-name /aws/lambda/la-marzocco-dashboard-updater \
   --start-time $(date -d '1 hour ago' +%s)000 \
-  \
   --region us-west-2
 ```
 
@@ -239,9 +297,9 @@ aws logs filter-log-events \
 4. Check Route53 DNS records
 
 ### Authentication Issues
-1. Verify La Marzocco credentials in `.env`
+1. Verify La Marzocco credentials in AWS Secrets Manager
 2. Test credentials with La Marzocco mobile app
-3. Check Secrets Manager in AWS console
+3. Check Secrets Manager console for credential updates
 
 ## Security
 
@@ -251,13 +309,14 @@ aws logs filter-log-events \
 - ✅ S3 bucket not publicly accessible (CloudFront OAC)
 - ✅ Lambda execution role with minimal permissions
 - ✅ CloudFormation stack with least privilege IAM policies
+- ✅ CodePipeline with secure artifact storage
 
 ### Security Best Practices
 - Regularly rotate La Marzocco credentials in Secrets Manager
 - Monitor CloudTrail for unusual API activity
 - Enable AWS Config for compliance monitoring
 - Set up billing alerts for cost anomalies
-- Review IAM permissions in CloudFormation template
+- Review IAM permissions in CloudFormation templates
 
 ## Cost Breakdown
 
@@ -268,17 +327,19 @@ aws logs filter-log-events \
 - **CloudFront**: ~$0.50 (assuming moderate traffic)
 - **Secrets Manager**: ~$0.40 (1 secret)
 - **Route53**: ~$0.50 (hosted zone)
+- **CodePipeline**: ~$1.00 (1 active pipeline)
+- **CodeBuild**: ~$0.05 (minimal build time)
 
-**Total**: ~$1.71/month
+**Total**: ~$2.76/month
 
 ## API Endpoints
 
 ### Dashboard
-- **URL**: `https://espresso.leozh.net/`
+- **URL**: `https://your-domain.com/`
 - **Content**: Full HTML dashboard
 
 ### JSON Data
-- **URL**: `https://espresso.leozh.net/data.json`
+- **URL**: `https://your-domain.com/data.json`
 - **Content**: Raw machine data in JSON format
 - **Cache**: 1 minute TTL
 
@@ -298,26 +359,37 @@ export CLOUDFRONT_DISTRIBUTION_ID=your-distribution
 python src/lambda_function.py
 ```
 
-### Project Structure
+### GitOps Workflow
+1. **Make Changes**: Edit code, templates, or configuration
+2. **Commit**: `git add . && git commit -m "Description"`
+3. **Deploy**: `git push origin main`
+4. **Monitor**: Check CodePipeline execution
+5. **Verify**: Test dashboard functionality
+
+## AWS Profile Usage
+
+This project supports any AWS CLI profile configuration:
+
+### Environment Variable Method (Recommended)
+```bash
+export AWS_PROFILE=your-profile-name
+./deploy-pipeline.sh
 ```
-la-marzocco-dashboard/
-├── cloudformation/
-│   ├── main.yaml              # CloudFormation template
-│   └── parameters.json        # Stack parameters
-├── src/
-│   └── lambda_function.py     # Lambda function code
-├── deploy.sh                  # Deployment script
-├── cleanup.sh                 # Cleanup script
-├── requirements.txt           # Python dependencies
-├── .env.example              # Environment template
-└── README.md                 # This file
+
+### Per-Command Method
+```bash
+AWS_PROFILE=your-profile-name ./deploy-pipeline.sh
 ```
+
+### Default Profile
+If no profile is specified, scripts use your default AWS CLI profile.
 
 ## Support
 
 ### AWS Documentation
 - [CloudFormation User Guide](https://docs.aws.amazon.com/cloudformation/)
 - [Lambda Developer Guide](https://docs.aws.amazon.com/lambda/)
+- [CodePipeline User Guide](https://docs.aws.amazon.com/codepipeline/)
 - [EventBridge User Guide](https://docs.aws.amazon.com/eventbridge/)
 
 ### La Marzocco API
@@ -325,18 +397,24 @@ la-marzocco-dashboard/
 
 ### Useful Commands
 ```bash
+# Pipeline operations
+AWS_PROFILE=your-profile aws codepipeline list-pipelines --region us-west-2
+AWS_PROFILE=your-profile aws codepipeline get-pipeline-state --name pipeline-name --region us-west-2
+
 # Stack operations
-aws cloudformation list-stacks --region us-west-2
-aws cloudformation validate-template --template-body file://cloudformation/main.yaml
+AWS_PROFILE=your-profile aws cloudformation list-stacks --region us-west-2
+AWS_PROFILE=your-profile aws cloudformation validate-template --template-body file://cloudformation/main.yaml
 
 # Resource inspection
-aws cloudformation list-stack-resources --stack-name la-marzocco-dashboard --region us-west-2
+AWS_PROFILE=your-profile aws cloudformation list-stack-resources --stack-name la-marzocco-dashboard --region us-west-2
 
 # Monitoring
-aws logs describe-log-groups --log-group-name-prefix /aws/lambda/la-marzocco --region us-west-2
-aws events list-rules --name-prefix la-marzocco --region us-west-2
+AWS_PROFILE=your-profile aws logs describe-log-groups --log-group-name-prefix /aws/lambda/la-marzocco --region us-west-2
+AWS_PROFILE=your-profile aws events list-rules --name-prefix la-marzocco --region us-west-2
 ```
 
 ---
+
+**Created by [Leo Zhadanovsky](https://github.com/leozhad/la-marzocco-dashboard)**
 
 **Enjoy your serverless La Marzocco dashboard!** ☕️

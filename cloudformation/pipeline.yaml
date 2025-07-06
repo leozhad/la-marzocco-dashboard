@@ -315,6 +315,7 @@ Resources:
       Handler: index.lambda_handler
       Role: !GetAtt LambdaUpdateRole.Arn
       Timeout: 60
+      MemorySize: 512  # Increased from default 128 MB to handle large deployment packages
       Code:
         ZipFile: |
           import json
