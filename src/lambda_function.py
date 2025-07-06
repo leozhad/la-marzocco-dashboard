@@ -515,6 +515,12 @@ class LaMarzoccoDashboard:
             color: #ccc;
         }
         
+        .shot-time {
+            color: #999;
+            font-size: 0.8em;
+            font-weight: normal;
+        }
+        
         .stat-value {
             font-weight: bold;
             color: #fff;
@@ -968,7 +974,12 @@ class LaMarzoccoDashboard:
                 <h3>🎯 Recent Shots</h3>
                 {% for shot in recent_shots[:3] %}
                 <div class="stat-row">
-                    <span class="stat-label">Shot {{ loop.index }}</span>
+                    <span class="stat-label">
+                        Shot {{ loop.index }}
+                        {% if shot.time > 0 %}
+                        <br><small class="shot-time" data-timestamp="{{ shot.time }}">Loading...</small>
+                        {% endif %}
+                    </span>
                     <span class="stat-value">
                         {{ shot.extraction_seconds }}s • {{ shot.dose_value }}g • 
                         {% if shot.dose_value > 0 %}
@@ -1201,6 +1212,58 @@ class LaMarzoccoDashboard:
         
         // Convert timestamp on page load
         convertToLocalTime();
+        
+        // Convert shot timestamps to local time
+        function convertShotTimestamps() {
+            const shotTimeElements = document.querySelectorAll('.shot-time');
+            shotTimeElements.forEach(element => {
+                const timestamp = parseInt(element.getAttribute('data-timestamp'));
+                if (timestamp && timestamp > 0) {
+                    try {
+                        // Convert from milliseconds to Date object
+                        const shotDate = new Date(timestamp);
+                        const now = new Date();
+                        
+                        // Calculate time difference
+                        const diffMs = now - shotDate;
+                        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+                        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                        
+                        let timeText;
+                        if (diffMinutes < 1) {
+                            timeText = 'Just now';
+                        } else if (diffMinutes < 60) {
+                            timeText = `${diffMinutes}m ago`;
+                        } else if (diffHours < 24) {
+                            timeText = `${diffHours}h ago`;
+                        } else if (diffDays < 7) {
+                            timeText = `${diffDays}d ago`;
+                        } else {
+                            // For older shots, show the actual date/time
+                            const options = {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true
+                            };
+                            timeText = shotDate.toLocaleString('en-US', options);
+                        }
+                        
+                        element.textContent = timeText;
+                    } catch (error) {
+                        console.log('Error converting shot timestamp:', error);
+                        element.textContent = 'Unknown time';
+                    }
+                } else {
+                    element.textContent = 'Unknown time';
+                }
+            });
+        }
+        
+        // Convert shot timestamps on page load
+        convertShotTimestamps();
         
         // Create Usage Statistics Pie Chart
         const usageCtx = document.getElementById('usageChart');
