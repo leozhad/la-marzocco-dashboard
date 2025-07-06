@@ -1,0 +1,35 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - echo "Installing build dependencies..."
+      - pip install --upgrade pip
+
+  pre_build:
+    commands:
+      - echo "Build started on `date`"
+      - echo "Preparing Lambda deployment package..."
+
+  build:
+    commands:
+      - echo "Building Lambda deployment package..."
+      - mkdir -p lambda-package
+      - cp src/lambda_function.py lambda-package/
+      - cd lambda-package
+      - pip install -r ../requirements.txt -t .
+      - zip -r ../lambda-deployment-package.zip .
+      - cd ..
+      - ls -la lambda-deployment-package.zip
+      - echo "Build completed on `date`"
+
+  post_build:
+    commands:
+      - echo "Post-build phase completed on `date`"
+
+artifacts:
+  files:
+    - '**/*'
+  name: la-marzocco-dashboard-$(date +%Y-%m-%d-%H-%M-%S)
