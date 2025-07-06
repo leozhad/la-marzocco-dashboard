@@ -1,0 +1,30 @@
+[
+  {
+    "ParameterKey": "GitHubOwner",
+    "ParameterValue": "leozhad"
+  },
+  {
+    "ParameterKey": "GitHubRepo",
+    "ParameterValue": "la-marzocco-dashboard"
+  },
+  {
+    "ParameterKey": "GitHubBranch",
+    "ParameterValue": "main"
+  },
+  {
+    "ParameterKey": "GitHubToken",
+    "ParameterValue": "***REMOVED***"
+  },
+  {
+    "ParameterKey": "DomainName",
+    "ParameterValue": "espresso.leozh.net"
+  },
+  {
+    "ParameterKey": "LaMarzoccoUsername",
+    "ParameterValue": "***REMOVED***"
+  },
+  {
+    "ParameterKey": "LaMarzoccoPassword",
+    "ParameterValue": "***REMOVED***"
+  }
+]
