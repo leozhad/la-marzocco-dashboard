@@ -328,7 +328,6 @@ Resources:
         ZipFile: |
           import json
           import boto3
-          import codepipeline
           
           def lambda_handler(event, context):
               try:
@@ -344,6 +343,7 @@ Resources:
                   # Update Lambda function code
                   lambda_client = boto3.client('lambda')
                   s3_client = boto3.client('s3')
+                  codepipeline_client = boto3.client('codepipeline')
                   
                   # Download the deployment package
                   response = s3_client.get_object(Bucket=bucket, Key=key)
@@ -360,7 +360,6 @@ Resources:
                   )
                   
                   # Signal success to CodePipeline
-                  codepipeline_client = boto3.client('codepipeline')
                   codepipeline_client.put_job_success_result(jobId=job_id)
                   
                   return {
