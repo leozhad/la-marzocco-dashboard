@@ -89,12 +89,15 @@ export AWS_REGION=<your-aws-region>
 
 This creates the CI/CD pipeline that will automatically deploy your application from GitHub.
 
-### 3. Configure La Marzocco Credentials
+### 3. Configure Secrets in AWS Secrets Manager
 
-After the pipeline is deployed, you need to add your La Marzocco credentials to AWS Secrets Manager:
+The pipeline uses two secrets stored in AWS Secrets Manager:
+
+#### **La Marzocco Credentials** (Created by Pipeline)
+After the pipeline is deployed, you need to add your La Marzocco credentials:
 
 ```bash
-# Find your secret name (it will be something like la-marzocco-deployment-pipeline-lamarzocco-credentials)
+# Find your La Marzocco secret name
 aws secretsmanager list-secrets \
   --region $AWS_REGION \
   --query 'SecretList[?contains(Name, `lamarzocco-credentials`)].Name' \
@@ -107,9 +110,36 @@ aws secretsmanager update-secret \
   --region $AWS_REGION
 ```
 
-**Important**: Replace `<your-profile-name>` with your AWS CLI profile name, `<your-aws-region>` with your deployment region, and use your actual La Marzocco Cloud credentials.
+#### **GitHub Token** (Pre-existing)
+The pipeline also requires a GitHub personal access token for repository access:
 
-**Note**: The pipeline creates a single shared secret that both the deployment process and the Lambda function use, avoiding duplicate credential storage.
+```bash
+# Check if GitHub token secret exists
+aws secretsmanager describe-secret \
+  --secret-id la-marzocco-github-token \
+  --region $AWS_REGION
+
+# If it doesn't exist, create it with your GitHub token
+aws secretsmanager create-secret \
+  --name la-marzocco-github-token \
+  --description "GitHub token for pipeline access" \
+  --secret-string '{"token":"your-github-personal-access-token"}' \
+  --region $AWS_REGION
+```
+
+**GitHub Token Requirements:**
+- **Scope**: `repo` (Full control of private repositories)
+- **Format**: Personal Access Token (classic)
+- **Permissions**: Read access to your la-marzocco-dashboard repository
+
+**Important**: Replace placeholders with your actual credentials:
+- `<your-profile-name>`: Your AWS CLI profile name
+- `<your-aws-region>`: Your deployment region  
+- `your-lamarzocco-username`: Your La Marzocco Cloud email
+- `your-lamarzocco-password`: Your La Marzocco Cloud password
+- `your-github-personal-access-token`: Your GitHub PAT
+
+**Note**: The pipeline creates a single shared La Marzocco secret that both the deployment process and the Lambda function use, avoiding duplicate credential storage.
 
 ### 4. Deploy Application (via Git)
 
@@ -215,7 +245,8 @@ la-marzocco-dashboard/
 ├── requirements.txt           # Python dependencies
 ├── .env.example              # Environment template
 ├── .gitignore                # Git ignore rules
-└── README.md                 # This file
+├── README.md                 # This file
+└── CHANGELOG.md              # Project change history
 ```
 
 ## Customization
@@ -437,6 +468,10 @@ AWS_PROFILE=<your-profile-name> AWS_REGION=<your-aws-region> ./deploy-pipeline.s
 If no profile is specified, scripts use your default AWS CLI profile and the region from your `.env` file.
 
 ## Support
+
+### Project Documentation
+- **README.md**: Complete project documentation (this file)
+- **CHANGELOG.md**: Detailed change history and version information
 
 ### AWS Documentation
 - [CloudFormation User Guide](https://docs.aws.amazon.com/cloudformation/)
