@@ -401,7 +401,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:GetObject
-                Resource: !Sub '${ArtifactsBucket}/*'
+                Resource: !Sub '${ArtifactsBucket.Arn}/*'
               - Effect: Allow
                 Action:
                   - codepipeline:PutJobSuccessResult
