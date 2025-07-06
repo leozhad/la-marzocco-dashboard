@@ -1416,12 +1416,19 @@ def lambda_handler(event, context):
     """AWS Lambda entry point"""
     dashboard = LaMarzoccoDashboard()
     
-    # Run the async function
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
+    # Use asyncio.run() which is the modern and recommended way
     try:
-        result = loop.run_until_complete(dashboard.run())
-        return result
-    finally:
-        loop.close()
+        return asyncio.run(dashboard.run())
+    except RuntimeError as e:
+        if "cannot be called from a running event loop" in str(e):
+            # Fallback for cases where there's already a running loop
+            # This can happen in some testing environments
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(dashboard.run())
+                return result
+            finally:
+                loop.close()
+        else:
+            raise
