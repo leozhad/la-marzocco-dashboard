@@ -3,12 +3,15 @@ La Marzocco Dashboard Lambda Function
 
 This function collects data from La Marzocco Cloud API and generates
 a dashboard that's deployed to S3 for static hosting.
+
+OPTIMIZATION: Only invalidates CloudFront when content actually changes.
 """
 
 import json
 import boto3
 import logging
 import os
+import hashlib
 from datetime import datetime, timezone
 from typing import Dict, Any
 import asyncio
@@ -32,6 +35,10 @@ class LaMarzoccoDashboard:
         self.secret_name = os.environ['LAMARZOCCO_SECRET_NAME']
         self.cloudfront_distribution_id = os.environ.get('CLOUDFRONT_DISTRIBUTION_ID')
         
+        # Cache keys for content hashing
+        self.html_cache_key = 'dashboard-html-hash'
+        self.json_cache_key = 'dashboard-json-hash'
+        
     async def get_credentials(self) -> Dict[str, str]:
         """Retrieve La Marzocco credentials from Secrets Manager"""
         try:
@@ -44,6 +51,58 @@ class LaMarzoccoDashboard:
         except Exception as e:
             logger.error(f"Failed to retrieve credentials: {e}")
             raise
+
+    def get_content_hash(self, content: str) -> str:
+        """Generate SHA256 hash of content for change detection"""
+        return hashlib.sha256(content.encode('utf-8')).hexdigest()
+
+    def get_cached_hash(self, cache_key: str) -> str:
+        """Get previously stored content hash from S3"""
+        try:
+            response = self.s3_client.get_object(
+                Bucket=self.bucket_name,
+                Key=f'.cache/{cache_key}'
+            )
+            return response['Body'].read().decode('utf-8').strip()
+        except self.s3_client.exceptions.NoSuchKey:
+            logger.info(f"No cached hash found for {cache_key}")
+            return ""
+        except Exception as e:
+            logger.warning(f"Error retrieving cached hash for {cache_key}: {e}")
+            return ""
+
+    def store_cached_hash(self, cache_key: str, content_hash: str):
+        """Store content hash in S3 for future comparison"""
+        try:
+            self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=f'.cache/{cache_key}',
+                Body=content_hash,
+                ContentType='text/plain'
+            )
+            logger.info(f"Stored hash for {cache_key}: {content_hash[:8]}...")
+        except Exception as e:
+            logger.warning(f"Error storing cached hash for {cache_key}: {e}")
+
+    def has_content_changed(self, content: str, cache_key: str) -> bool:
+        """Check if content has changed since last update"""
+        current_hash = self.get_content_hash(content)
+        cached_hash = self.get_cached_hash(cache_key)
+        
+        if current_hash != cached_hash:
+            logger.info(f"Content changed for {cache_key}: {cached_hash[:8]}... -> {current_hash[:8]}...")
+            return True
+        else:
+            logger.info(f"Content unchanged for {cache_key}: {current_hash[:8]}...")
+            return False
+
+    def normalize_machine_data_for_comparison(self, machine_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a normalized version of machine data excluding timestamp for comparison"""
+        normalized = machine_data.copy()
+        # Remove timestamp field that changes every run
+        if 'timestamp' in normalized:
+            del normalized['timestamp']
+        return normalized
 
     async def collect_machine_data(self) -> Dict[str, Any]:
         """Collect data from La Marzocco Cloud API"""
@@ -1777,10 +1836,18 @@ class LaMarzoccoDashboard:
             logger.error(f"Failed to upload to S3: {e}")
             raise
 
-    async def invalidate_cloudfront(self):
-        """Invalidate CloudFront cache"""
+    async def invalidate_cloudfront(self, paths_to_invalidate: list = None):
+        """Invalidate CloudFront cache for specific paths or default paths"""
         if not self.cloudfront_distribution_id:
             logger.info("No CloudFront distribution ID provided, skipping invalidation")
+            return
+            
+        # Use provided paths or default to both paths
+        if paths_to_invalidate is None:
+            paths_to_invalidate = ['/index.html', '/data.json']
+        
+        if not paths_to_invalidate:
+            logger.info("No paths to invalidate")
             return
             
         try:
@@ -1788,21 +1855,21 @@ class LaMarzoccoDashboard:
                 DistributionId=self.cloudfront_distribution_id,
                 InvalidationBatch={
                     'Paths': {
-                        'Quantity': 2,
-                        'Items': ['/index.html', '/data.json']
+                        'Quantity': len(paths_to_invalidate),
+                        'Items': paths_to_invalidate
                     },
                     'CallerReference': f'lambda-{int(datetime.now().timestamp())}'
                 }
             )
             
-            logger.info(f"CloudFront invalidation created: {response['Invalidation']['Id']}")
+            logger.info(f"CloudFront invalidation created for {len(paths_to_invalidate)} paths: {response['Invalidation']['Id']}")
             
         except Exception as e:
             logger.warning(f"CloudFront invalidation failed: {e}")
             # Don't raise - this is not critical
 
     async def run(self):
-        """Main execution function"""
+        """Main execution function with smart CloudFront invalidation"""
         try:
             logger.info("Starting La Marzocco dashboard update")
             
@@ -1810,15 +1877,37 @@ class LaMarzoccoDashboard:
             machine_data = await self.collect_machine_data()
             logger.info(f"Collected data for machine: {machine_data['machine_info']['name']}")
             
-            # Generate HTML dashboard
-            html_content = self.generate_dashboard_html(machine_data)
-            logger.info("Generated HTML dashboard")
+            # Check if machine data has actually changed (excluding timestamp)
+            normalized_data = self.normalize_machine_data_for_comparison(machine_data)
+            normalized_json = json.dumps(normalized_data, sort_keys=True)
             
-            # Upload to S3
+            # Check if content has changed
+            html_content = self.generate_dashboard_html(machine_data)
+            json_content = json.dumps(machine_data, indent=2)
+            
+            html_changed = self.has_content_changed(html_content, self.html_cache_key)
+            json_changed = self.has_content_changed(normalized_json, self.json_cache_key)
+            
+            # Always upload to S3 (to update timestamp for users)
             await self.upload_to_s3(html_content, machine_data)
             
-            # Invalidate CloudFront cache
-            await self.invalidate_cloudfront()
+            # Only invalidate CloudFront if content actually changed
+            paths_to_invalidate = []
+            if html_changed:
+                paths_to_invalidate.append('/index.html')
+                self.store_cached_hash(self.html_cache_key, self.get_content_hash(html_content))
+                logger.info("HTML content changed - will invalidate /index.html")
+            
+            if json_changed:
+                paths_to_invalidate.append('/data.json')
+                self.store_cached_hash(self.json_cache_key, self.get_content_hash(normalized_json))
+                logger.info("JSON content changed - will invalidate /data.json")
+            
+            if paths_to_invalidate:
+                await self.invalidate_cloudfront(paths_to_invalidate)
+                logger.info(f"CloudFront invalidated for {len(paths_to_invalidate)} paths: {paths_to_invalidate}")
+            else:
+                logger.info("No content changes detected - skipping CloudFront invalidation")
             
             logger.info("Dashboard update completed successfully")
             
@@ -1828,7 +1917,9 @@ class LaMarzoccoDashboard:
                     'message': 'Dashboard updated successfully',
                     'timestamp': datetime.now(timezone.utc).isoformat(),
                     'machine': machine_data['machine_info']['name'],
-                    'total_shots': machine_data['statistics']['total_shots']
+                    'total_shots': machine_data['statistics']['total_shots'],
+                    'content_changed': len(paths_to_invalidate) > 0,
+                    'invalidated_paths': paths_to_invalidate
                 })
             }
             
