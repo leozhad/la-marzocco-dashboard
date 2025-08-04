@@ -99,9 +99,11 @@ class LaMarzoccoDashboard:
     def normalize_machine_data_for_comparison(self, machine_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a normalized version of machine data excluding timestamp for comparison"""
         normalized = machine_data.copy()
-        # Remove timestamp field that changes every run
+        # Remove timestamp fields that change every run
         if 'timestamp' in normalized:
             del normalized['timestamp']
+        if 'formatted_timestamp' in normalized:
+            del normalized['formatted_timestamp']
         return normalized
 
     async def collect_machine_data(self) -> Dict[str, Any]:
@@ -1881,11 +1883,16 @@ class LaMarzoccoDashboard:
             normalized_data = self.normalize_machine_data_for_comparison(machine_data)
             normalized_json = json.dumps(normalized_data, sort_keys=True)
             
-            # Check if content has changed
+            # Generate HTML with full data (including timestamp for display)
             html_content = self.generate_dashboard_html(machine_data)
+            
+            # Generate normalized HTML for comparison (excluding timestamp)
+            normalized_html_content = self.generate_dashboard_html(normalized_data)
+            
+            # Check if content has changed
             json_content = json.dumps(machine_data, indent=2)
             
-            html_changed = self.has_content_changed(html_content, self.html_cache_key)
+            html_changed = self.has_content_changed(normalized_html_content, self.html_cache_key)
             json_changed = self.has_content_changed(normalized_json, self.json_cache_key)
             
             # Always upload to S3 (to update timestamp for users)
@@ -1895,7 +1902,7 @@ class LaMarzoccoDashboard:
             paths_to_invalidate = []
             if html_changed:
                 paths_to_invalidate.append('/index.html')
-                self.store_cached_hash(self.html_cache_key, self.get_content_hash(html_content))
+                self.store_cached_hash(self.html_cache_key, self.get_content_hash(normalized_html_content))
                 logger.info("HTML content changed - will invalidate /index.html")
             
             if json_changed:
