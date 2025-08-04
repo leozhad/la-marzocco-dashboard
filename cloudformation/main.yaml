@@ -496,7 +496,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:ListBucket
-                Resource: !Ref DashboardBucket
+                Resource: !GetAtt DashboardBucket.Arn
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
