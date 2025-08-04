@@ -99,11 +99,12 @@ class LaMarzoccoDashboard:
     def normalize_machine_data_for_comparison(self, machine_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a normalized version of machine data excluding timestamp for comparison"""
         normalized = machine_data.copy()
-        # Remove timestamp fields that change every run
+        # Replace timestamp fields with static values for comparison
+        # This ensures HTML template doesn't break while removing timestamp variability
         if 'timestamp' in normalized:
-            del normalized['timestamp']
+            normalized['timestamp'] = '2025-01-01T00:00:00Z'  # Static placeholder
         if 'formatted_timestamp' in normalized:
-            del normalized['formatted_timestamp']
+            normalized['formatted_timestamp'] = 'Static timestamp for comparison'  # Static placeholder
         return normalized
 
     async def collect_machine_data(self) -> Dict[str, Any]:
