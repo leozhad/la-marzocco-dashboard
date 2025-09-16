@@ -228,48 +228,90 @@ class LaMarzoccoDashboard:
                     logger.info(f"Successfully parsed statistics: {len(recent_shots)} shots, {total_shots} total")
                     
                 except Exception as stats_error:
-                    logger.warning(f"Statistics parsing failed, using raw API: {stats_error}")
+                    logger.warning(f"Statistics parsing failed, extracting from error: {stats_error}")
                     
-                    # Fallback: get raw statistics data and parse manually
-                    try:
-                        url = f"https://gw-lmz.lamarzocco.io/v1/things/{machine_serial}/statistics"
-                        headers = {"Authorization": f"Bearer {await client.async_get_access_token()}"}
-                        
-                        async with client._client.get(url, headers=headers) as response:
-                            if response.status == 200:
-                                raw_stats = await response.json()
-                                logger.info("Got raw statistics data, extracting manually...")
+                    # Extract data from the exception message (contains the actual data)
+                    error_str = str(stats_error)
+                    if 'lastCoffees' in error_str:
+                        try:
+                            import re
+                            # Extract the lastCoffees array from the error message
+                            pattern = r"'lastCoffees': (\[.*?\]), 'widget_type'"
+                            match = re.search(pattern, error_str)
+                            if match:
+                                raw_data = match.group(1)
+                                # Clean up the data format (replace single quotes with double quotes for JSON)
+                                json_data = raw_data.replace("'", '"').replace('None', 'null')
+                                shots_data = json.loads(json_data)
                                 
-                                # Extract data manually from raw response
-                                for widget in raw_stats.get('selected_widgets', []):
-                                    if widget.get('code') == 'LAST_COFFEE' and 'output' in widget:
-                                        if 'lastCoffees' in widget['output']:
-                                            raw_shots = widget['output']['lastCoffees'][:5]
-                                            for shot in raw_shots:
-                                                recent_shots.append({
-                                                    'time': shot.get('time', 0),
-                                                    'extraction_seconds': round(shot.get('extractionSeconds', 0), 1),
-                                                    'dose_value': round(shot.get('doseValue', 0), 1),
-                                                    'dose_mode': shot.get('doseMode', 'Unknown'),
-                                                    'dose_index': shot.get('doseIndex', '')
-                                                })
-                                            logger.info(f"Extracted {len(recent_shots)} recent shots from raw data")
+                                # Convert to our format
+                                for shot in shots_data[:5]:
+                                    recent_shots.append({
+                                        'time': shot.get('time', 0),
+                                        'extraction_seconds': round(shot.get('extractionSeconds', 0), 1),
+                                        'dose_value': round(shot.get('doseValue', 0), 1),
+                                        'dose_mode': shot.get('doseMode', 'Unknown'),
+                                        'dose_index': shot.get('doseIndex', '')
+                                    })
+                                
+                                logger.info(f"Extracted {len(recent_shots)} recent shots from error message")
+                            
+                            # Also extract trend data for totals
+                            trend_pattern = r"'coffees': (\[.*?\]), 'flushes': (\[.*?\])"
+                            trend_match = re.search(trend_pattern, error_str)
+                            if trend_match:
+                                coffees_data = json.loads(trend_match.group(1).replace("'", '"'))
+                                flushes_data = json.loads(trend_match.group(2).replace("'", '"'))
+                                
+                                total_shots = sum(day.get('value', 0) for day in coffees_data)
+                                total_flushes = sum(day.get('value', 0) for day in flushes_data)
+                                
+                                logger.info(f"Extracted totals from error: {total_shots} shots, {total_flushes} flushes")
+                                
+                        except Exception as parse_error:
+                            logger.warning(f"Failed to parse shot data from error: {parse_error}")
+                    
+                    # Fallback: try raw API if exception extraction fails
+                    if not recent_shots:
+                        try:
+                            url = f"https://gw-lmz.lamarzocco.io/v1/things/{machine_serial}/statistics"
+                            headers = {"Authorization": f"Bearer {await client.async_get_access_token()}"}
+                            
+                            async with client._client.get(url, headers=headers) as response:
+                                if response.status == 200:
+                                    raw_stats = await response.json()
+                                    logger.info("Got raw statistics data, extracting manually...")
                                     
-                                    elif widget.get('code') == 'COFFEE_AND_FLUSH_TREND' and 'output' in widget:
-                                        output = widget['output']
-                                        if 'coffees' in output and 'flushes' in output:
-                                            total_shots = sum(day.get('value', 0) for day in output['coffees'])
-                                            total_flushes = sum(day.get('value', 0) for day in output['flushes'])
-                                            logger.info(f"Extracted totals from trend: {total_shots} shots, {total_flushes} flushes")
-                            else:
-                                logger.warning(f"Raw statistics API returned {response.status}")
-                    except Exception as raw_error:
-                        logger.warning(f"Raw statistics extraction also failed: {raw_error}")
-                        # Use fallback data
-                        recent_shots = [
-                            {'time': 1751755324037, 'extraction_seconds': 31.1, 'dose_value': 20.3, 'dose_mode': 'MassType', 'dose_index': 'DoseA'},
-                            {'time': 1751754202546, 'extraction_seconds': 32.2, 'dose_value': 20.3, 'dose_mode': 'MassType', 'dose_index': 'DoseA'},
-                        ]
+                                    # Extract data manually from raw response
+                                    for widget in raw_stats.get('selected_widgets', []):
+                                        if widget.get('code') == 'LAST_COFFEE' and 'output' in widget:
+                                            if 'lastCoffees' in widget['output']:
+                                                raw_shots = widget['output']['lastCoffees'][:5]
+                                                for shot in raw_shots:
+                                                    recent_shots.append({
+                                                        'time': shot.get('time', 0),
+                                                        'extraction_seconds': round(shot.get('extractionSeconds', 0), 1),
+                                                        'dose_value': round(shot.get('doseValue', 0), 1),
+                                                        'dose_mode': shot.get('doseMode', 'Unknown'),
+                                                        'dose_index': shot.get('doseIndex', '')
+                                                    })
+                                                logger.info(f"Extracted {len(recent_shots)} recent shots from raw data")
+                                        
+                                        elif widget.get('code') == 'COFFEE_AND_FLUSH_TREND' and 'output' in widget:
+                                            output = widget['output']
+                                            if 'coffees' in output and 'flushes' in output:
+                                                total_shots = sum(day.get('value', 0) for day in output['coffees'])
+                                                total_flushes = sum(day.get('value', 0) for day in output['flushes'])
+                                                logger.info(f"Extracted totals from trend: {total_shots} shots, {total_flushes} flushes")
+                                else:
+                                    logger.warning(f"Raw statistics API returned {response.status}")
+                        except Exception as raw_error:
+                            logger.warning(f"Raw statistics extraction also failed: {raw_error}")
+                            # Use fallback data
+                            recent_shots = [
+                                {'time': 1751755324037, 'extraction_seconds': 31.1, 'dose_value': 20.3, 'dose_mode': 'MassType', 'dose_index': 'DoseA'},
+                                {'time': 1751754202546, 'extraction_seconds': 32.2, 'dose_value': 20.3, 'dose_mode': 'MassType', 'dose_index': 'DoseA'},
+                            ]
                 
                 # Extract data from machine object
                 machine_dict = machine.to_dict()
