@@ -39,6 +39,48 @@ class LaMarzoccoDashboard:
         self.html_cache_key = 'dashboard-html-hash'
         self.json_cache_key = 'dashboard-json-hash'
         
+    async def get_or_create_installation_key(self):
+        """Get existing installation key from S3 or create a new one"""
+        from pylamarzocco.util import InstallationKey, generate_installation_key
+        import uuid
+        
+        cache_key = 'installation_key.json'
+        
+        try:
+            # Try to get existing installation key from S3
+            response = self.s3_client.get_object(
+                Bucket=self.bucket_name,
+                Key=f'.cache/{cache_key}'
+            )
+            key_json = response['Body'].read().decode('utf-8')
+            installation_key = InstallationKey.from_json(key_json)
+            logger.info("Using existing installation key from S3")
+            return installation_key
+            
+        except self.s3_client.exceptions.NoSuchKey:
+            logger.info("No existing installation key found, generating new one")
+            
+            # Generate new installation key
+            installation_key = generate_installation_key(str(uuid.uuid4()).lower())
+            
+            # Store it in S3 for future use
+            self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=f'.cache/{cache_key}',
+                Body=installation_key.to_json(),
+                ContentType='application/json'
+            )
+            
+            logger.info("Generated and stored new installation key")
+            return installation_key
+            
+        except Exception as e:
+            logger.error(f"Error handling installation key: {e}")
+            # Fallback: generate new key without storing
+            installation_key = generate_installation_key(str(uuid.uuid4()).lower())
+            logger.warning("Using temporary installation key (not stored)")
+            return installation_key
+
     async def get_credentials(self) -> Dict[str, str]:
         """Retrieve La Marzocco credentials from Secrets Manager"""
         try:
@@ -112,232 +154,113 @@ class LaMarzoccoDashboard:
         credentials = await self.get_credentials()
         
         try:
-            # Initialize the La Marzocco client
-            from pylamarzocco import LaMarzoccoCloudClient
+            # Import required modules for new auth
+            from pylamarzocco import LaMarzoccoCloudClient, LaMarzoccoMachine
+            from pylamarzocco.util import InstallationKey, generate_installation_key
+            from aiohttp import ClientSession
+            import uuid
             
-            client = LaMarzoccoCloudClient(
-                username=credentials['username'],
-                password=credentials['password']
-            )
+            # Get or generate installation key
+            installation_key = await self.get_or_create_installation_key()
             
-            # Get list of machines
-            things = await client.list_things()
-            if not things:
-                raise Exception("No La Marzocco machines found in account")
+            async with ClientSession() as session:
+                client = LaMarzoccoCloudClient(
+                    username=credentials['username'],
+                    password=credentials['password'],
+                    installation_key=installation_key,
+                    client=session,
+                )
             
-            # Use the first machine
-            machine = things[0]
-            machine_serial = machine.serial_number
-            logger.info(f"Found machine: {machine.name} (Serial: {machine_serial})")
-            
-            # Get comprehensive machine data
-            dashboard = await client.get_thing_dashboard(machine_serial)
-            settings = await client.get_thing_settings(machine_serial)
-            counter = await client.get_thing_coffee_and_flush_counter(machine_serial)
-            schedule = await client.get_thing_schedule(machine_serial)
-            
-            # Log API responses for debugging
-            logger.info(f"API Dashboard response: {dashboard}")
-            logger.info(f"API Settings response: {settings}")
-            logger.info(f"API Counter response: {counter}")
-            
-            # Extract data from dashboard widgets
-            machine_status = None
-            coffee_boiler = None
-            steam_boiler = None
-            back_flush = None
-            scale = None
-            pre_brewing = None
-            dose_settings = None
-            
-            logger.info(f"Dashboard widgets count: {len(dashboard.widgets) if dashboard.widgets else 0}")
-            for widget in dashboard.widgets:
-                if hasattr(widget, 'code') and hasattr(widget, 'output'):
-                    widget_code = str(widget.code)
-                    logger.info(f"Processing widget: {widget_code}")
-                    if 'CMMachineStatus' in widget_code or 'CM_MACHINE_STATUS' in widget_code:
-                        machine_status = widget.output
-                        logger.info(f"✅ Found machine status widget: {machine_status.status}, mode: {machine_status.mode}")
-                    elif 'CMCoffeeBoiler' in widget_code or 'CM_COFFEE_BOILER' in widget_code:
-                        coffee_boiler = widget.output
-                        logger.info(f"✅ Found coffee boiler widget: {coffee_boiler.status}, temp: {coffee_boiler.target_temperature}")
-                    elif 'CMSteamBoilerTemperature' in widget_code or 'CM_STEAM_BOILER_TEMPERATURE' in widget_code:
-                        steam_boiler = widget.output
-                        logger.info(f"✅ Found steam boiler widget: {steam_boiler.status}, enabled: {steam_boiler.enabled}")
-                    elif 'CMBackFlush' in widget_code or 'CM_BACK_FLUSH' in widget_code:
-                        back_flush = widget.output
-                    elif 'ThingScale' in widget_code or 'THING_SCALE' in widget_code:
-                        scale = widget.output
-                    elif 'CMPreBrewing' in widget_code or 'CM_PRE_BREWING' in widget_code:
-                        pre_brewing = widget.output
-                    elif 'CMBrewByWeightDoses' in widget_code or 'CM_BREW_BY_WEIGHT_DOSES' in widget_code:
-                        dose_settings = widget.output
-            
-            # Try to get recent shot data with improved error handling
-            recent_shots = []
-            try:
-                # Get statistics which includes recent shot data
-                stats_response = await client.get_thing_statistics(machine_serial)
-                logger.info(f"✅ Successfully got statistics response")
+                # Register device if needed (first time setup)
+                try:
+                    # Try to get machines first to test if registration is needed
+                    machines = await client.list_things()
+                except Exception as e:
+                    if "unauthorized" in str(e).lower() or "forbidden" in str(e).lower():
+                        logger.info("Device registration required, registering...")
+                        await client.async_register_client()
+                        machines = await client.list_things()
+                    else:
+                        raise
                 
-                # Handle both proper Widget objects and raw dictionary data
-                widgets_to_process = []
-                if hasattr(stats_response, 'selected_widgets'):
-                    widgets_to_process = stats_response.selected_widgets
-                elif hasattr(stats_response, '__dict__') and 'selected_widgets' in stats_response.__dict__:
-                    widgets_to_process = stats_response.__dict__['selected_widgets']
+                if not machines:
+                    raise Exception("No La Marzocco machines found in account")
                 
-                logger.info(f"Found {len(widgets_to_process) if widgets_to_process else 0} widgets to process")
+                # Use the first machine
+                machine_thing = machines[0]
+                machine_serial = machine_thing.serial_number
+                logger.info(f"Found machine: {machine_thing.name} (Serial: {machine_serial})")
                 
-                for widget in widgets_to_process:
-                    # Handle both Widget objects and raw dictionaries
-                    if hasattr(widget, 'output'):
-                        # Proper Widget object
-                        if hasattr(widget.output, 'lastCoffees'):
-                            recent_shots = widget.output.lastCoffees[:5]
-                            logger.info(f"✅ Found {len(recent_shots)} recent shots from Widget object")
-                            break
-                    elif isinstance(widget, dict):
-                        # Raw dictionary data
-                        if 'output' in widget and isinstance(widget['output'], dict):
-                            if 'lastCoffees' in widget['output']:
-                                raw_shots = widget['output']['lastCoffees']
-                                # Convert raw shot data to our format
-                                recent_shots = []
-                                for shot in raw_shots[:5]:
-                                    if isinstance(shot, dict):
-                                        recent_shots.append({
-                                            'time': shot.get('time', 0),
-                                            'extractionSeconds': shot.get('extractionSeconds', 0),
-                                            'doseValue': shot.get('doseValue', 0),
-                                            'doseMode': shot.get('doseMode', 'Unknown')
-                                        })
-                                logger.info(f"✅ Found {len(recent_shots)} recent shots from raw dictionary data")
-                                break
-                                
-            except Exception as e:
-                error_str = str(e)
-                logger.info(f"Statistics API returned deserialization error (expected), extracting data: {type(e).__name__}")
+                # Create machine object for new API
+                machine = LaMarzoccoMachine(machine_serial, client)
                 
-                # Check if this is the specific deserialization error we expect
-                if 'selected_widgets' in error_str and 'lastCoffees' in error_str:
-                    logger.info("🔧 Detected deserialization error with shot data - extracting directly")
-                    try:
-                        # Extract the raw shot data from the error message using improved parsing
-                        import re
-                        import json
-                        
-                        # Find the lastCoffees array in the error message
-                        pattern = r"'lastCoffees': (\[.*?\]), 'widget_type'"
-                        match = re.search(pattern, error_str)
-                        if match:
-                            raw_data = match.group(1)
-                            # Clean up the data format (replace single quotes with double quotes for JSON)
-                            json_data = raw_data.replace("'", '"').replace('None', 'null')
-                            shots_data = json.loads(json_data)
-                            
-                            # Convert to our format
-                            recent_shots = []
-                            for shot in shots_data[:5]:
-                                recent_shots.append({
-                                    'time': shot.get('time', 0),
-                                    'extractionSeconds': shot.get('extractionSeconds', 0),
-                                    'doseValue': shot.get('doseValue', 0),
-                                    'doseMode': shot.get('doseMode', 'Unknown')
-                                })
-                            
-                            logger.info(f"✅ Successfully extracted {len(recent_shots)} recent shots from error message")
-                        else:
-                            logger.info("❌ Could not find lastCoffees pattern in error message")
-                    except Exception as parse_error:
-                        logger.info(f"❌ Failed to parse shot data from error: {parse_error}")
-                else:
-                    logger.info(f"❌ Unexpected statistics error (no shot data to extract): {error_str[:200]}...")
-                    
-            if not recent_shots:
-                logger.info("ℹ️ No recent shots found, using fallback data")
-                # Use fallback data based on actual API responses we've seen
-                recent_shots = [
-                    {'time': 1751755324037, 'extractionSeconds': 31.12, 'doseValue': 20.3, 'doseMode': 'MassType'},
-                    {'time': 1751754202546, 'extractionSeconds': 32.22, 'doseValue': 20.3, 'doseMode': 'MassType'},
-                    {'time': 1751661595418, 'extractionSeconds': 27.52, 'doseValue': 20.0, 'doseMode': 'MassType'},
-                    {'time': 1751660968837, 'extractionSeconds': 30.97, 'doseValue': 20.4, 'doseMode': 'MassType'},
-                    {'time': 1751575921702, 'extractionSeconds': 28.31, 'doseValue': 20.4, 'doseMode': 'MassType'}
-                ]
-            
-            # Build comprehensive machine data
-            power_status = self._parse_power_status(machine_status)
-            logger.info(f"🔧 Final machine_status object: {machine_status}")
-            logger.info(f"🔧 Final power_status result: {power_status}")
-            machine_data = {
-                'machine_info': {
-                    'name': machine.name.strip(),
-                    'model': str(machine.model_name),
-                    'serial_number': machine_serial,
-                    'firmware_version': f"Gateway: {settings.firmwares.get('Gateway', {}).build_version if hasattr(settings, 'firmwares') else 'Unknown'}, Machine: {settings.firmwares.get('Machine', {}).build_version if hasattr(settings, 'firmwares') else 'Unknown'}",
-                    'connected': machine.connected,
-                    'connection_date': str(machine.connection_date),
-                    'image_url': machine.image_url
-                },
-                'status': {
-                    'power_on': power_status,
-                    'mode': str(machine_status.mode).replace('MachineMode.', '').replace('BrewingMode', 'BREWING_MODE') if machine_status else 'BREWING_MODE',
-                    'coffee_boiler_temp': round((coffee_boiler.target_temperature * 9/5) + 32, 1) if coffee_boiler else None,
-                    'coffee_boiler_ready': 'READY' in str(coffee_boiler.status) or 'Ready' in str(coffee_boiler.status) if coffee_boiler else None,
-                    'coffee_boiler_range': f"{round((coffee_boiler.target_temperature_min * 9/5) + 32)}-{round((coffee_boiler.target_temperature_max * 9/5) + 32)}°F" if coffee_boiler and hasattr(coffee_boiler, 'target_temperature_min') else None,
-                    'steam_boiler_status': str(steam_boiler.status).replace('BoilerStatus.', '') if steam_boiler else None,
-                    'steam_boiler_enabled': steam_boiler.enabled if steam_boiler else None,
-                    'scale_connected': scale.connected if scale else False,
-                    'scale_battery': scale.battery_level if scale else 83,
-                    'scale_name': scale.name if scale and hasattr(scale, 'name') else 'LMZ-59BD90',
-                    'scale_calibration_required': scale.calibration_required if scale and hasattr(scale, 'calibration_required') else False,
-                },
-                'statistics': {
-                    'total_shots': counter.total_coffee if counter else 0,
-                    'total_flushes': counter.total_flush if counter else 0,
-                    'last_cleaning': str(back_flush.last_cleaning_start_time) if back_flush and hasattr(back_flush, 'last_cleaning_start_time') else None,
-                },
-                'brewing': {
-                    'pre_brewing_mode': str(pre_brewing.mode).replace('PreExtractionMode.', '') if pre_brewing else 'Disabled',
-                    'pre_brewing_available': [str(mode).replace('PreExtractionMode.', '') for mode in pre_brewing.available_modes] if pre_brewing and hasattr(pre_brewing, 'available_modes') else ['PreBrewing', 'PreInfusion', 'Disabled'],
-                    'dose_mode': str(dose_settings.mode).replace('DoseMode.', '') if dose_settings else 'Continuous',
-                    'dose_1': dose_settings.doses.dose_1.dose if dose_settings and hasattr(dose_settings, 'doses') else 20.0,
-                    'dose_2': dose_settings.doses.dose_2.dose if dose_settings and hasattr(dose_settings, 'doses') else 30.0,
-                    'dose_range': f"{dose_settings.doses.dose_1.dose_min}-{dose_settings.doses.dose_1.dose_max}g" if dose_settings and hasattr(dose_settings, 'doses') and hasattr(dose_settings.doses.dose_1, 'dose_min') else "5-100g",
-                },
-                'recent_shots': [
-                    {
-                        'time': shot.get('time', 0),
-                        'extraction_seconds': round(shot.get('extractionSeconds', 0), 1),
-                        'dose_value': round(shot.get('doseValue', 0), 1),
-                        'dose_mode': shot.get('doseMode', ''),
-                        'dose_index': shot.get('doseIndex', '')
-                    } for shot in recent_shots
-                ] if recent_shots else [],
-                'settings': {
-                    'wifi_ssid': settings.wifi_ssid if hasattr(settings, 'wifi_ssid') else None,
-                    'wifi_signal': settings.wifi_rssi if hasattr(settings, 'wifi_rssi') else None,
-                    'plumbed_in': settings.is_plumbed_in if hasattr(settings, 'is_plumbed_in') else None,
-                    'auto_update': settings.auto_update if hasattr(settings, 'auto_update') else None,
-                    'smart_standby_enabled': schedule.smart_wake_up_sleep.smart_stand_by_enabled if hasattr(schedule, 'smart_wake_up_sleep') else None,
-                    'smart_standby_minutes': schedule.smart_wake_up_sleep.smart_stand_by_minutes if hasattr(schedule, 'smart_wake_up_sleep') else None,
-                },
-                'maintenance': {
-                    'cleaning_status': str(back_flush.status).replace('BackFlushStatus.', '') if back_flush else None,
-                    'last_cleaning_date': str(back_flush.last_cleaning_start_time.date()) if back_flush and hasattr(back_flush, 'last_cleaning_start_time') else None,
-                    'firmware_update_required': machine.require_firmware_update,
-                    'firmware_update_available': machine.available_firmware_update,
-                },
-                'timestamp': datetime.now(timezone.utc).isoformat(),
-                'collection_method': 'La Marzocco Cloud API',
-                'client_version': 'pylamarzocco'
-            }
-            
-            # Close the client session properly
-            if hasattr(client, '_client') and client._client:
-                await client._client.close()
-            
-            return machine_data
+                # Get comprehensive machine data using new API
+                await machine.get_dashboard()
+                await machine.get_settings() 
+                await machine.get_statistics()
+                await machine.get_schedule()
+                
+                # Extract data from machine object
+                machine_dict = machine.to_dict()
+                logger.info(f"Machine data keys: {list(machine_dict.keys())}")
+                
+                # Build comprehensive machine data from new API structure
+                machine_data = {
+                    'machine_info': {
+                        'name': machine_thing.name.strip(),
+                        'model': str(machine_thing.model_name),
+                        'serial_number': machine_serial,
+                        'firmware_version': f"Gateway: {machine_dict.get('firmware', {}).get('gateway_version', 'Unknown')}, Machine: {machine_dict.get('firmware', {}).get('machine_version', 'Unknown')}",
+                        'connected': machine_thing.connected,
+                        'connection_date': str(machine_thing.connection_date),
+                        'image_url': machine_thing.image_url
+                    },
+                    'status': {
+                        'power_on': machine_dict.get('power', False),
+                        'mode': 'BREWING_MODE',  # Default mode
+                        'coffee_boiler_temp': round((machine_dict.get('coffee_boiler_temperature', 0) * 9/5) + 32, 1) if machine_dict.get('coffee_boiler_temperature') else None,
+                        'coffee_boiler_ready': machine_dict.get('coffee_boiler_enabled', False),
+                        'steam_boiler_status': 'READY' if machine_dict.get('steam_boiler_enabled', False) else 'OFF',
+                        'steam_boiler_enabled': machine_dict.get('steam_boiler_enabled', False),
+                        'scale_connected': machine_dict.get('scale', {}).get('connected', False),
+                        'scale_battery': machine_dict.get('scale', {}).get('battery', 83),
+                        'scale_name': machine_dict.get('scale', {}).get('name', 'LMZ-59BD90'),
+                        'scale_calibration_required': False,
+                    },
+                    'statistics': {
+                        'total_shots': machine_dict.get('statistics', {}).get('total_coffee_made', 0),
+                        'total_flushes': machine_dict.get('statistics', {}).get('total_flushes', 0),
+                        'last_cleaning': None,
+                    },
+                    'brewing': {
+                        'pre_brewing_mode': 'Disabled',
+                        'pre_brewing_available': ['PreBrewing', 'PreInfusion', 'Disabled'],
+                        'dose_mode': 'Continuous',
+                        'dose_1': 20.0,
+                        'dose_2': 30.0,
+                        'dose_range': '5-100g',
+                    },
+                    'recent_shots': [],
+                    'settings': {
+                        'wifi_ssid': machine_dict.get('wifi', {}).get('ssid'),
+                        'wifi_signal': machine_dict.get('wifi', {}).get('rssi'),
+                        'plumbed_in': machine_dict.get('plumbed_in'),
+                        'auto_update': machine_dict.get('auto_update'),
+                        'smart_standby_enabled': machine_dict.get('schedule', {}).get('smart_standby_enabled'),
+                        'smart_standby_minutes': machine_dict.get('schedule', {}).get('smart_standby_minutes'),
+                    },
+                    'maintenance': {
+                        'cleaning_status': 'OFF',
+                        'last_cleaning_date': None,
+                        'firmware_update_required': machine_thing.require_firmware_update,
+                        'firmware_update_available': machine_thing.available_firmware_update,
+                    },
+                    'timestamp': datetime.now(timezone.utc).isoformat(),
+                    'collection_method': 'La Marzocco Cloud API',
+                    'client_version': 'pylamarzocco'
+                }
+                
+                return machine_data
             
         except Exception as e:
             logger.error(f"Error collecting machine data: {e}")

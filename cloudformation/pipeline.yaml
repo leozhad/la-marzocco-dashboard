@@ -23,6 +23,18 @@ Parameters:
     Default: espresso.leozh.net
 
 Resources:
+  # CodeStar Connection for GitHub
+  GitHubConnection:
+    Type: AWS::CodeStarConnections::Connection
+    Properties:
+      ConnectionName: la-marzocco-github
+      ProviderType: GitHub
+      Tags:
+        - Key: Project
+          Value: la-marzocco-dashboard
+        - Key: ManagedBy
+          Value: CloudFormation
+
   # S3 Bucket for CodePipeline artifacts
   ArtifactsBucket:
     Type: AWS::S3::Bucket
@@ -229,6 +241,10 @@ Resources:
                 Resource: !GetAtt CloudFormationServiceRole.Arn
               - Effect: Allow
                 Action:
+                  - codestar-connections:UseConnection
+                Resource: !Ref GitHubConnection
+              - Effect: Allow
+                Action:
                   - lambda:InvokeFunction
                 Resource: !GetAtt LambdaUpdateFunction.Arn
 
@@ -247,15 +263,14 @@ Resources:
             - Name: SourceAction
               ActionTypeId:
                 Category: Source
-                Owner: ThirdParty
-                Provider: GitHub
+                Owner: AWS
+                Provider: CodeStarSourceConnection
                 Version: '1'
               Configuration:
-                Owner: !Ref GitHubOwner
-                Repo: !Ref GitHubRepo
-                Branch: !Ref GitHubBranch
-                OAuthToken: !Sub '{{resolve:secretsmanager:la-marzocco-github-token:SecretString:token}}'
-                PollForSourceChanges: true
+                ConnectionArn: !Ref GitHubConnection
+                FullRepositoryId: !Sub '${GitHubOwner}/${GitHubRepo}'
+                BranchName: !Ref GitHubBranch
+                OutputArtifactFormat: CODE_ZIP
               OutputArtifacts:
                 - Name: SourceOutput
 

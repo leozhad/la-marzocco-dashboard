@@ -1,0 +1,133 @@
+# CloudFormation template snippet to update cache behaviors for cost optimization
+# This should be integrated into your main.yaml template
+
+# Update the existing CacheBehaviors section in main.yaml:
+
+CacheBehaviors:
+  Quantity: 2
+  Items:
+    # Data.json - Short cache for real-time data
+    - PathPattern: "/data.json"
+      TargetOriginId: !Sub 'S3-${S3Bucket}'
+      TrustedSigners:
+        Enabled: false
+        Quantity: 0
+      TrustedKeyGroups:
+        Enabled: false
+        Quantity: 0
+      ViewerProtocolPolicy: redirect-to-https
+      AllowedMethods:
+        Quantity: 3
+        Items:
+          - HEAD
+          - GET
+          - OPTIONS
+        CachedMethods:
+          Quantity: 2
+          Items:
+            - HEAD
+            - GET
+      SmoothStreaming: false
+      Compress: true
+      LambdaFunctionAssociations:
+        Quantity: 0
+      FunctionAssociations:
+        Quantity: 0
+      FieldLevelEncryptionId: ""
+      GrpcConfig:
+        Enabled: false
+      ForwardedValues:
+        QueryString: false
+        Cookies:
+          Forward: none
+        Headers:
+          Quantity: 0
+        QueryStringCacheKeys:
+          Quantity: 0
+      MinTTL: 0
+      DefaultTTL: 300      # 5 minutes (same as update frequency)
+      MaxTTL: 600          # 10 minutes max
+    
+    # Static assets - Long cache
+    - PathPattern: "/assets/*"
+      TargetOriginId: !Sub 'S3-${S3Bucket}'
+      TrustedSigners:
+        Enabled: false
+        Quantity: 0
+      TrustedKeyGroups:
+        Enabled: false
+        Quantity: 0
+      ViewerProtocolPolicy: redirect-to-https
+      AllowedMethods:
+        Quantity: 3
+        Items:
+          - HEAD
+          - GET
+          - OPTIONS
+        CachedMethods:
+          Quantity: 2
+          Items:
+            - HEAD
+            - GET
+      SmoothStreaming: false
+      Compress: true
+      LambdaFunctionAssociations:
+        Quantity: 0
+      FunctionAssociations:
+        Quantity: 0
+      FieldLevelEncryptionId: ""
+      GrpcConfig:
+        Enabled: false
+      ForwardedValues:
+        QueryString: false
+        Cookies:
+          Forward: none
+        Headers:
+          Quantity: 0
+        QueryStringCacheKeys:
+          Quantity: 0
+      MinTTL: 86400        # 1 day minimum
+      DefaultTTL: 2592000  # 30 days default
+      MaxTTL: 31536000     # 1 year maximum
+
+# Update DefaultCacheBehavior for HTML content:
+DefaultCacheBehavior:
+  TargetOriginId: !Sub 'S3-${S3Bucket}'
+  TrustedSigners:
+    Enabled: false
+    Quantity: 0
+  TrustedKeyGroups:
+    Enabled: false
+    Quantity: 0
+  ViewerProtocolPolicy: redirect-to-https
+  AllowedMethods:
+    Quantity: 3
+    Items:
+      - HEAD
+      - GET
+      - OPTIONS
+    CachedMethods:
+      Quantity: 2
+      Items:
+        - HEAD
+        - GET
+  SmoothStreaming: false
+  Compress: true
+  LambdaFunctionAssociations:
+    Quantity: 0
+  FunctionAssociations:
+    Quantity: 0
+  FieldLevelEncryptionId: ""
+  GrpcConfig:
+    Enabled: false
+  ForwardedValues:
+    QueryString: false
+    Cookies:
+      Forward: none
+    Headers:
+      Quantity: 0
+    QueryStringCacheKeys:
+      Quantity: 0
+  MinTTL: 0
+  DefaultTTL: 600        # 10 minutes (longer than current 5 minutes)
+  MaxTTL: 1800           # 30 minutes max
