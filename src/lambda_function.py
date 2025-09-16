@@ -256,18 +256,18 @@ class LaMarzoccoDashboard:
                                 
                                 logger.info(f"Extracted {len(recent_shots)} recent shots from error message")
                             
-                    # Also extract total counts from COFFEE_AND_FLUSH_COUNTER widget
-                    counter_pattern = r"'code': 'COFFEE_AND_FLUSH_COUNTER'.*?'totalCoffee': (\d+).*?'totalFlush': (\d+)"
-                    counter_match = re.search(counter_pattern, error_str)
-                    if counter_match:
-                        total_shots = int(counter_match.group(1))
-                        total_flushes = int(counter_match.group(2))
-                        logger.info(f"Extracted lifetime totals: {total_shots} shots, {total_flushes} flushes")
-                    else:
-                        # Fallback: extract from trend data (7-day totals)
-                        trend_pattern = r"'coffees': (\[.*?\]), 'flushes': (\[.*?\])"
-                        trend_match = re.search(trend_pattern, error_str)
-                        if trend_match:
+                            # Also extract total counts from COFFEE_AND_FLUSH_COUNTER widget
+                            counter_pattern = r"'code': 'COFFEE_AND_FLUSH_COUNTER'.*?'totalCoffee': (\d+).*?'totalFlush': (\d+)"
+                            counter_match = re.search(counter_pattern, error_str)
+                            if counter_match:
+                                total_shots = int(counter_match.group(1))
+                                total_flushes = int(counter_match.group(2))
+                                logger.info(f"Extracted lifetime totals: {total_shots} shots, {total_flushes} flushes")
+                            else:
+                                # Fallback: extract from trend data (7-day totals)
+                                trend_pattern = r"'coffees': (\[.*?\]), 'flushes': (\[.*?\])"
+                                trend_match = re.search(trend_pattern, error_str)
+                                if trend_match:
                             coffees_data = json.loads(trend_match.group(1).replace("'", '"'))
                             flushes_data = json.loads(trend_match.group(2).replace("'", '"'))
                             
