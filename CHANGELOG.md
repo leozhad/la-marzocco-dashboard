@@ -5,6 +5,29 @@ All notable changes to the La Marzocco Dashboard project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-09-16
+
+### 🔧 **API Compatibility Update**
+
+#### **Fixed**
+- **Updated pylamarzocco Authentication**: Migrated from deprecated OAuth to new installation key system
+- **Device Registration**: Added automatic device registration for new installations
+- **Statistics Extraction**: Fixed data extraction to handle API changes and enum parsing issues
+- **CodeStar Connections**: Migrated CI/CD pipeline from GitHub OAuth to CodeStar Connections
+- **Complete Data Preservation**: Maintained all dashboard functionality including recent shots and lifetime totals
+
+#### **Added**
+- **Installation Key Management**: Automatic generation and S3 persistence of device keys
+- **Enhanced Error Handling**: Robust fallback for API parsing issues
+- **aiohttp Dependency**: Added for new client session management
+
+#### **Technical Details**
+- Updated to pylamarzocco 2.1.0 with new authentication flow
+- Added exception-based data extraction for statistics (handles MassType enum issue)
+- Extracts lifetime totals from COFFEE_AND_FLUSH_COUNTER widget (5151 shots, 1891 flushes)
+- Extracts recent shots from LAST_COFFEE widget with complete shot data
+- Maintains backward compatibility with existing dashboard features
+
 ## [2.2.0] - 2025-08-03
 
 ### 💰 Major Cost Optimization

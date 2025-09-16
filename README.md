@@ -62,6 +62,16 @@ The project uses GitOps for deployment:
 4. **Domain**: Route53 hosted zone for your domain
 5. **Tools**: AWS CLI, Python 3.11+, jq (for JSON parsing)
 
+**Note**: Uses pylamarzocco 2.1.0+ with new installation key authentication system.
+
+### Recent Updates (v2.3.0)
+
+✅ **API Compatibility Fixed**: Updated to work with latest La Marzocco Cloud API changes
+- **New Authentication**: Migrated to installation key system (automatic device registration)
+- **Complete Data**: Maintains all dashboard features including recent shots and lifetime statistics
+- **Enhanced Reliability**: Robust error handling for API changes
+- **CI/CD Updated**: Migrated pipeline from GitHub OAuth to CodeStar Connections
+
 ### 1. Setup Environment
 
 ```bash
