@@ -197,12 +197,85 @@ class LaMarzoccoDashboard:
                 # Get comprehensive machine data using new API
                 await machine.get_dashboard()
                 await machine.get_settings() 
-                await machine.get_statistics()
                 await machine.get_schedule()
+                
+                # Try to get statistics with error handling for parsing issues
+                statistics_data = None
+                recent_shots = []
+                try:
+                    await machine.get_statistics()
+                    statistics_data = machine.statistics
+                except Exception as stats_error:
+                    logger.warning(f"Statistics parsing failed: {stats_error}")
+                    # Try to get raw statistics data directly from client
+                    try:
+                        # Use the client's internal method to get raw statistics
+                        url = f"https://gw-lmz.lamarzocco.io/v1/things/{machine_serial}/statistics"
+                        headers = {"Authorization": f"Bearer {await client.async_get_access_token()}"}
+                        
+                        async with client._client.get(url, headers=headers) as response:
+                            if response.status == 200:
+                                raw_stats = await response.json()
+                                logger.info("Got raw statistics data, extracting manually...")
+                                
+                                # Extract shot data manually from raw response
+                                if 'selected_widgets' in raw_stats:
+                                    for widget in raw_stats['selected_widgets']:
+                                        if widget.get('code') == 'LAST_COFFEE' and 'output' in widget:
+                                            if 'lastCoffees' in widget['output']:
+                                                raw_shots = widget['output']['lastCoffees'][:5]
+                                                for shot in raw_shots:
+                                                    recent_shots.append({
+                                                        'time': shot.get('time', 0),
+                                                        'extraction_seconds': round(shot.get('extractionSeconds', 0), 1),
+                                                        'dose_value': round(shot.get('doseValue', 0), 1),
+                                                        'dose_mode': shot.get('doseMode', 'Unknown'),
+                                                        'dose_index': shot.get('doseIndex', '')
+                                                    })
+                                                logger.info(f"Extracted {len(recent_shots)} recent shots from raw data")
+                                                break
+                    except Exception as raw_error:
+                        logger.warning(f"Raw statistics extraction also failed: {raw_error}")
                 
                 # Extract data from machine object
                 machine_dict = machine.to_dict()
                 logger.info(f"Machine data keys: {list(machine_dict.keys())}")
+                
+                # Extract widget data from dashboard
+                dashboard_data = machine_dict.get('dashboard', {})
+                widgets = dashboard_data.get('widgets', [])
+                
+                # Parse widgets for specific data
+                machine_status = None
+                coffee_boiler = None
+                steam_boiler = None
+                back_flush = None
+                scale = None
+                pre_brewing = None
+                dose_settings = None
+                
+                for widget in widgets:
+                    code = widget.get('code', '')
+                    output = widget.get('output', {})
+                    
+                    if code == 'CMMachineStatus':
+                        machine_status = output
+                    elif code == 'CMCoffeeBoiler':
+                        coffee_boiler = output
+                    elif code == 'CMSteamBoilerTemperature':
+                        steam_boiler = output
+                    elif code == 'CMBackFlush':
+                        back_flush = output
+                    elif code == 'ThingScale':
+                        scale = output
+                    elif code == 'CMPreBrewing':
+                        pre_brewing = output
+                    elif code == 'CMBrewByWeightDoses':
+                        dose_settings = output
+                
+                # Get settings and schedule data
+                settings_data = machine_dict.get('settings', {})
+                schedule_data = machine_dict.get('schedule', {})
                 
                 # Build comprehensive machine data from new API structure
                 machine_data = {
@@ -210,48 +283,49 @@ class LaMarzoccoDashboard:
                         'name': machine_thing.name.strip(),
                         'model': str(machine_thing.model_name),
                         'serial_number': machine_serial,
-                        'firmware_version': f"Gateway: {machine_dict.get('firmware', {}).get('gateway_version', 'Unknown')}, Machine: {machine_dict.get('firmware', {}).get('machine_version', 'Unknown')}",
+                        'firmware_version': f"Gateway: {settings_data.get('firmwares', {}).get('Gateway', {}).get('build_version', 'Unknown')}, Machine: {settings_data.get('firmwares', {}).get('Machine', {}).get('build_version', 'Unknown')}",
                         'connected': machine_thing.connected,
                         'connection_date': str(machine_thing.connection_date),
                         'image_url': machine_thing.image_url
                     },
                     'status': {
-                        'power_on': machine_dict.get('power', False),
-                        'mode': 'BREWING_MODE',  # Default mode
-                        'coffee_boiler_temp': round((machine_dict.get('coffee_boiler_temperature', 0) * 9/5) + 32, 1) if machine_dict.get('coffee_boiler_temperature') else None,
-                        'coffee_boiler_ready': machine_dict.get('coffee_boiler_enabled', False),
-                        'steam_boiler_status': 'READY' if machine_dict.get('steam_boiler_enabled', False) else 'OFF',
-                        'steam_boiler_enabled': machine_dict.get('steam_boiler_enabled', False),
-                        'scale_connected': machine_dict.get('scale', {}).get('connected', False),
-                        'scale_battery': machine_dict.get('scale', {}).get('battery', 83),
-                        'scale_name': machine_dict.get('scale', {}).get('name', 'LMZ-59BD90'),
-                        'scale_calibration_required': False,
+                        'power_on': machine_status.get('status') == 'PoweredOn' if machine_status else True,
+                        'mode': machine_status.get('mode', 'BrewingMode').replace('BrewingMode', 'BREWING_MODE') if machine_status else 'BREWING_MODE',
+                        'coffee_boiler_temp': round((coffee_boiler.get('target_temperature', 0) * 9/5) + 32, 1) if coffee_boiler and coffee_boiler.get('target_temperature') else None,
+                        'coffee_boiler_ready': coffee_boiler.get('status') == 'Ready' if coffee_boiler else None,
+                        'coffee_boiler_range': f"{round((coffee_boiler.get('target_temperature_min', 80) * 9/5) + 32)}-{round((coffee_boiler.get('target_temperature_max', 100) * 9/5) + 32)}°F" if coffee_boiler else None,
+                        'steam_boiler_status': steam_boiler.get('status', 'Unknown') if steam_boiler else None,
+                        'steam_boiler_enabled': steam_boiler.get('enabled', False) if steam_boiler else None,
+                        'scale_connected': scale.get('connected', False) if scale else False,
+                        'scale_battery': scale.get('battery_level', 83) if scale else 83,
+                        'scale_name': scale.get('name', 'LMZ-59BD90') if scale else 'LMZ-59BD90',
+                        'scale_calibration_required': scale.get('calibration_required', False) if scale else False,
                     },
                     'statistics': {
-                        'total_shots': machine_dict.get('statistics', {}).get('total_coffee_made', 0),
-                        'total_flushes': machine_dict.get('statistics', {}).get('total_flushes', 0),
-                        'last_cleaning': None,
+                        'total_shots': 0,  # Will be updated if we get statistics
+                        'total_flushes': 0,  # Will be updated if we get statistics
+                        'last_cleaning': back_flush.get('last_cleaning_start_time') if back_flush else None,
                     },
                     'brewing': {
-                        'pre_brewing_mode': 'Disabled',
-                        'pre_brewing_available': ['PreBrewing', 'PreInfusion', 'Disabled'],
-                        'dose_mode': 'Continuous',
-                        'dose_1': 20.0,
-                        'dose_2': 30.0,
-                        'dose_range': '5-100g',
+                        'pre_brewing_mode': pre_brewing.get('mode', 'Disabled') if pre_brewing else 'Disabled',
+                        'pre_brewing_available': pre_brewing.get('available_modes', ['PreBrewing', 'PreInfusion', 'Disabled']) if pre_brewing else ['PreBrewing', 'PreInfusion', 'Disabled'],
+                        'dose_mode': dose_settings.get('mode', 'Continuous') if dose_settings else 'Continuous',
+                        'dose_1': dose_settings.get('doses', {}).get('dose_1', {}).get('dose', 20.0) if dose_settings else 20.0,
+                        'dose_2': dose_settings.get('doses', {}).get('dose_2', {}).get('dose', 30.0) if dose_settings else 30.0,
+                        'dose_range': f"{dose_settings.get('doses', {}).get('dose_1', {}).get('dose_min', 5)}-{dose_settings.get('doses', {}).get('dose_1', {}).get('dose_max', 100)}g" if dose_settings else "5-100g",
                     },
-                    'recent_shots': [],
+                    'recent_shots': recent_shots,
                     'settings': {
-                        'wifi_ssid': machine_dict.get('wifi', {}).get('ssid'),
-                        'wifi_signal': machine_dict.get('wifi', {}).get('rssi'),
-                        'plumbed_in': machine_dict.get('plumbed_in'),
-                        'auto_update': machine_dict.get('auto_update'),
-                        'smart_standby_enabled': machine_dict.get('schedule', {}).get('smart_standby_enabled'),
-                        'smart_standby_minutes': machine_dict.get('schedule', {}).get('smart_standby_minutes'),
+                        'wifi_ssid': settings_data.get('wifi_ssid'),
+                        'wifi_signal': settings_data.get('wifi_rssi'),
+                        'plumbed_in': settings_data.get('is_plumbed_in'),
+                        'auto_update': settings_data.get('auto_update'),
+                        'smart_standby_enabled': schedule_data.get('smart_wake_up_sleep', {}).get('smart_stand_by_enabled'),
+                        'smart_standby_minutes': schedule_data.get('smart_wake_up_sleep', {}).get('smart_stand_by_minutes'),
                     },
                     'maintenance': {
-                        'cleaning_status': 'OFF',
-                        'last_cleaning_date': None,
+                        'cleaning_status': back_flush.get('status', 'Unknown').title() if back_flush else 'Unknown',
+                        'last_cleaning_date': back_flush.get('last_cleaning_start_time', '').split('T')[0] if back_flush and back_flush.get('last_cleaning_start_time') else None,
                         'firmware_update_required': machine_thing.require_firmware_update,
                         'firmware_update_available': machine_thing.available_firmware_update,
                     },
