@@ -268,11 +268,11 @@ class LaMarzoccoDashboard:
                                 trend_pattern = r"'coffees': (\[.*?\]), 'flushes': (\[.*?\])"
                                 trend_match = re.search(trend_pattern, error_str)
                                 if trend_match:
-                            coffees_data = json.loads(trend_match.group(1).replace("'", '"'))
-                            flushes_data = json.loads(trend_match.group(2).replace("'", '"'))
-                            
-                            total_shots = sum(day.get('value', 0) for day in coffees_data)
-                            total_flushes = sum(day.get('value', 0) for day in flushes_data)
+                                    coffees_data = json.loads(trend_match.group(1).replace("'", '"'))
+                                    flushes_data = json.loads(trend_match.group(2).replace("'", '"'))
+                                    
+                                    total_shots = sum(day.get('value', 0) for day in coffees_data)
+                                    total_flushes = sum(day.get('value', 0) for day in flushes_data)
                             
                             logger.info(f"Extracted 7-day totals from trend: {total_shots} shots, {total_flushes} flushes")
                                 
