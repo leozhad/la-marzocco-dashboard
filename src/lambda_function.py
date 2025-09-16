@@ -176,7 +176,8 @@ class LaMarzoccoDashboard:
                     # Try to get machines first to test if registration is needed
                     machines = await client.list_things()
                 except Exception as e:
-                    if "unauthorized" in str(e).lower() or "forbidden" in str(e).lower():
+                    error_str = str(e).lower()
+                    if "unauthorized" in error_str or "forbidden" in error_str or "412" in error_str:
                         logger.info("Device registration required, registering...")
                         await client.async_register_client()
                         machines = await client.list_things()
