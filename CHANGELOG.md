@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Lambda Function Statistics Extraction** (2025-10-31)
+  - Fixed extraction of lifetime shot and flush counts from La Marzocco API
+  - Corrected widget data parsing to properly extract statistics from `COFFEE_AND_FLUSH_COUNTER` widget
+  - Fixed recent shots extraction from `LAST_COFFEE` widget
+  - Improved error handling for missing or malformed widget data
+  - Dashboard now correctly displays total shots (5151) and total flushes (1891)
+  - Recent shots now properly display with extraction time, dose, and timestamp
+
 ### Changed
 - **Documentation Structure Reorganization** (2025-10-31)
   - Restructured spec documentation into modular format
