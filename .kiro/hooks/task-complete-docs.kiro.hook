@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Task Complete Documentation",
+  "description": "Monitors for task completion markers and automatically updates relevant documentation files (README.md, CHANGELOG.md, etc.) and commits the changes to git",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".kiro/specs/*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A task has been completed. Review the recent changes and:\n\n1. Identify what was accomplished based on the file changes\n2. Update README.md if the changes affect:\n   - Features or functionality\n   - Setup/installation instructions\n   - Usage examples\n   - Architecture or dependencies\n3. Update CHANGELOG.md with:\n   - A new entry under the appropriate version section\n   - Clear description of what changed\n   - Date of the change\n4. Update any other relevant documentation files (deployment guides, architecture docs, etc.)\n5. After updating documentation, commit the changes to git with a descriptive message like:\n   - \"docs: Update documentation for [feature/change]\"\n   - Include both the code changes and documentation updates in the commit\n\nEnsure documentation is:\n- Clear and concise\n- Follows the project's documentation standards\n- Includes examples where helpful\n- Updates any affected sections (not just appending)\n\nThen stage and commit all changes together."
+  }
+}
