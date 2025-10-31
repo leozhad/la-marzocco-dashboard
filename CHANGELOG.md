@@ -5,10 +5,10 @@ All notable changes to the La Marzocco Dashboard project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.3.1] - 2025-10-31
 
 ### Fixed
-- **Lambda Function Statistics Extraction** (2025-10-31)
+- **Lambda Function Statistics Extraction**
   - Fixed extraction of lifetime shot and flush counts from La Marzocco API
   - Corrected widget data parsing to properly extract statistics from `COFFEE_AND_FLUSH_COUNTER` widget
   - Fixed recent shots extraction from `LAST_COFFEE` widget
@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Recent shots now properly display with extraction time, dose, and timestamp
 
 ### Changed
-- **Documentation Structure Reorganization** (2025-10-31)
+- **Documentation Structure Reorganization**
   - Restructured spec documentation into modular format
   - Main spec file (`.kiro/specs/la-marzocco-dashboard.spec.md`) now serves as project summary
   - Detailed specifications split into separate files:
@@ -25,7 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `design.md` - Architecture and technical design
     - `tasks.md` - Implementation plan and task list
   - Improved documentation navigation and maintainability
-  - No functional changes to the application
 
 ## [2.3.0] - 2025-09-16
 
