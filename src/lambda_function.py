@@ -232,49 +232,56 @@ class LaMarzoccoDashboard:
                     
                     # Extract data from the exception message (contains the actual data)
                     error_str = str(stats_error)
-                    if 'lastCoffees' in error_str:
+                    if 'lastCoffees' in error_str or 'COFFEE_AND_FLUSH_COUNTER' in error_str:
                         try:
                             import re
-                            # Extract the lastCoffees array from the error message
-                            pattern = r"'lastCoffees': (\[.*?\]), 'widget_type'"
-                            match = re.search(pattern, error_str)
-                            if match:
-                                raw_data = match.group(1)
-                                # Clean up the data format (replace single quotes with double quotes for JSON)
-                                json_data = raw_data.replace("'", '"').replace('None', 'null')
-                                shots_data = json.loads(json_data)
-                                
-                                # Convert to our format
-                                for shot in shots_data[:5]:
-                                    recent_shots.append({
-                                        'time': shot.get('time', 0),
-                                        'extraction_seconds': round(shot.get('extractionSeconds', 0), 1),
-                                        'dose_value': round(shot.get('doseValue', 0), 1),
-                                        'dose_mode': shot.get('doseMode', 'Unknown'),
-                                        'dose_index': shot.get('doseIndex', '')
-                                    })
-                                
-                                logger.info(f"Extracted {len(recent_shots)} recent shots from error message")
+                            import json as json_module
                             
-                            # Also extract total counts from COFFEE_AND_FLUSH_COUNTER widget
-                            counter_pattern = r"'code': 'COFFEE_AND_FLUSH_COUNTER'.*?'totalCoffee': (\d+).*?'totalFlush': (\d+)"
-                            counter_match = re.search(counter_pattern, error_str)
-                            if counter_match:
-                                total_shots = int(counter_match.group(1))
-                                total_flushes = int(counter_match.group(2))
-                                logger.info(f"Extracted lifetime totals: {total_shots} shots, {total_flushes} flushes")
-                            else:
-                                # Fallback: extract from trend data (7-day totals)
-                                trend_pattern = r"'coffees': (\[.*?\]), 'flushes': (\[.*?\])"
-                                trend_match = re.search(trend_pattern, error_str)
-                                if trend_match:
-                                    coffees_data = json.loads(trend_match.group(1).replace("'", '"'))
-                                    flushes_data = json.loads(trend_match.group(2).replace("'", '"'))
+                            # Extract the entire selected_widgets array from error message
+                            # Look for the array that starts with [{'code': and ends before the final ]
+                            widgets_pattern = r"has invalid value (\[\{.*?\}\])\s*$"
+                            widgets_match = re.search(widgets_pattern, error_str, re.DOTALL)
+                            
+                            if widgets_match:
+                                raw_widgets = widgets_match.group(1)
+                                # Clean up the data format
+                                json_data = raw_widgets.replace("'", '"').replace('None', 'null').replace('True', 'true').replace('False', 'false')
+                                widgets_data = json_module.loads(json_data)
+                                
+                                logger.info(f"Extracted {len(widgets_data)} widgets from error message")
+                                
+                                # Process each widget
+                                for widget in widgets_data:
+                                    widget_code = widget.get('code', '')
+                                    output = widget.get('output', {})
                                     
-                                    total_shots = sum(day.get('value', 0) for day in coffees_data)
-                                    total_flushes = sum(day.get('value', 0) for day in flushes_data)
-                            
-                            logger.info(f"Extracted 7-day totals from trend: {total_shots} shots, {total_flushes} flushes")
+                                    # Extract recent shots from LAST_COFFEE widget
+                                    if widget_code == 'LAST_COFFEE' and 'lastCoffees' in output:
+                                        shots_data = output['lastCoffees'][:5]  # Get first 5 shots
+                                        for shot in shots_data:
+                                            if shot.get('doseValue') is not None:  # Skip shots without dose data
+                                                recent_shots.append({
+                                                    'time': shot.get('time', 0),
+                                                    'extraction_seconds': round(shot.get('extractionSeconds', 0), 1),
+                                                    'dose_value': round(shot.get('doseValue', 0), 1),
+                                                    'dose_mode': shot.get('doseMode', 'Unknown'),
+                                                    'dose_index': shot.get('doseIndex', '')
+                                                })
+                                        logger.info(f"Extracted {len(recent_shots)} recent shots from LAST_COFFEE widget")
+                                    
+                                    # Extract lifetime totals from COFFEE_AND_FLUSH_COUNTER widget
+                                    elif widget_code == 'COFFEE_AND_FLUSH_COUNTER':
+                                        total_shots = output.get('totalCoffee', 0)
+                                        total_flushes = output.get('totalFlush', 0)
+                                        logger.info(f"Extracted lifetime totals from COUNTER widget: {total_shots} shots, {total_flushes} flushes")
+                                    
+                                    # Fallback: extract from COFFEE_AND_FLUSH_TREND widget (7-day totals)
+                                    elif widget_code == 'COFFEE_AND_FLUSH_TREND' and total_shots == 0:
+                                        coffees_data = output.get('coffees', [])
+                                        flushes_data = output.get('flushes', [])
+                                        total_shots = sum(day.get('value', 0) for day in coffees_data)
+                                        total_flushes = sum(day.get('value', 0) for day in flushes_data)
+                                        logger.info(f"Extracted 7-day totals from TREND widget: {total_shots} shots, {total_flushes} flushes")
                                 
                         except Exception as parse_error:
                             logger.warning(f"Failed to parse shot data from error: {parse_error}")
