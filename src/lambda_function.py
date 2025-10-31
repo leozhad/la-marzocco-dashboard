@@ -257,17 +257,25 @@ class LaMarzoccoDashboard:
                                     
                                     # Extract recent shots from LAST_COFFEE widget
                                     if widget_code == 'LAST_COFFEE' and 'lastCoffees' in output:
-                                        shots_data = output['lastCoffees'][:5]  # Get first 5 shots
-                                        for shot in shots_data:
-                                            if shot.get('doseValue') is not None:  # Skip shots without dose data
-                                                recent_shots.append({
+                                        # Iterate through all shots to find 5 with dose data
+                                        all_shots = output['lastCoffees']
+                                        shots_with_dose = []
+                                        
+                                        for shot in all_shots:
+                                            if shot.get('doseValue') is not None:  # Only include shots with dose data
+                                                shots_with_dose.append({
                                                     'time': shot.get('time', 0),
                                                     'extraction_seconds': round(shot.get('extractionSeconds', 0), 1),
                                                     'dose_value': round(shot.get('doseValue', 0), 1),
                                                     'dose_mode': shot.get('doseMode', 'Unknown'),
                                                     'dose_index': shot.get('doseIndex', '')
                                                 })
-                                        logger.info(f"Extracted {len(recent_shots)} recent shots from LAST_COFFEE widget")
+                                                # Stop once we have 5 shots with dose data
+                                                if len(shots_with_dose) >= 5:
+                                                    break
+                                        
+                                        recent_shots = shots_with_dose
+                                        logger.info(f"Extracted {len(recent_shots)} recent shots with dose data from LAST_COFFEE widget (from {len(all_shots)} total shots)")
                                     
                                     # Extract lifetime totals from COFFEE_AND_FLUSH_COUNTER widget
                                     elif widget_code == 'COFFEE_AND_FLUSH_COUNTER':
