@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 import sys
 import unittest
 from copy import deepcopy
@@ -9,11 +10,12 @@ from datetime import datetime, timezone
 from http import HTTPMethod
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
+from botocore.exceptions import ClientError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from lambda_function import DashboardCloudClient, LaMarzoccoDashboard, extract_statistics
+from lambda_function import DashboardCloudClient, LaMarzoccoDashboard, extract_statistics, frontend_bundle
 from pylamarzocco.const import CUSTOMER_APP_URL
 from pylamarzocco.models import ThingStatistics
 
@@ -161,18 +163,25 @@ class ClientAndCollectionTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(data["settings"]["smart_standby_enabled"])
         self.assertEqual(data["statistics"]["total_shots"], 5664)
         html = dashboard.generate_dashboard_html(data)
-        self.assertIn("Past 7 Days", html)
-        self.assertIn("Brew target 203.0", html)
-        self.assertIn("Shot 5", html)
-        self.assertIn("&lt;script&gt;example&lt;/script&gt;", html)
-        self.assertIn("Gateway v1 release notes", html)
+        embedded = json.loads(re.search(
+            r'<script id="machine-data" type="application/json">(.*?)</script>', html, re.S
+        ).group(1))
+        self.assertEqual(embedded, data)
+        self.assertIn('machine-viewport', html)
+        self.assertIn('matrix-toggle', html)
+        self.assertNotIn('DESIGN STUDY', html)
+        self.assertIn(r"\u003cscript\u003e", html)
         self.assertNotIn("<script>example</script>", html)
+        self.assertIn(f"/assets/{frontend_bundle()[1]}/dashboard.js", html)
 
         data["recent_shots"] = data["recent_shots"][:2]
         data["usage_trend"] = None
         html = dashboard.generate_dashboard_html(data)
-        self.assertIn("Average (Last 2)", html)
-        self.assertNotIn("Past 7 Days", html)
+        embedded = json.loads(re.search(
+            r'<script id="machine-data" type="application/json">(.*?)</script>', html, re.S
+        ).group(1))
+        self.assertEqual(len(embedded["recent_shots"]), 2)
+        self.assertIsNone(embedded["usage_trend"])
 
         machine.get_statistics.side_effect = ValueError("bad statistics")
         with patch("lambda_function.DashboardCloudClient", return_value=client), patch(
@@ -189,6 +198,63 @@ class ClientAndCollectionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response["statusCode"], 500)
         dashboard.upload_to_s3.assert_not_awaited()
         dashboard.invalidate_cloudfront.assert_not_awaited()
+
+
+class FrontendPublicationTests(unittest.IsolatedAsyncioTestCase):
+    def dashboard(self):
+        dashboard = object.__new__(LaMarzoccoDashboard)
+        dashboard.bucket_name = "test-bucket"
+        dashboard.s3_client = Mock()
+        dashboard.s3_client.head_object.side_effect = ClientError(
+            {"Error": {"Code": "404"}}, "HeadObject"
+        )
+        dashboard.collect_machine_data = AsyncMock(return_value={
+            "machine_info": {"name": "Test Machine"},
+            "statistics": {"total_shots": 5664},
+            "timestamp": "2026-09-12T00:00:00Z",
+        })
+        dashboard.html_cache_key = "html"
+        dashboard.json_cache_key = "json"
+        dashboard.has_content_changed = Mock(return_value=True)
+        dashboard.store_cached_hash = Mock()
+        dashboard.invalidate_cloudfront = AsyncMock()
+        return dashboard
+
+    async def test_every_asset_and_json_are_published_before_html(self):
+        dashboard = self.dashboard()
+        result = await dashboard.run()
+        self.assertEqual(result["statusCode"], 200)
+        calls = dashboard.s3_client.put_object.call_args_list
+        keys = [call.kwargs["Key"] for call in calls]
+        _, digest, assets = frontend_bundle()
+        self.assertEqual(keys[:len(assets)], [f"assets/{digest}/{name}" for name, _, _ in assets])
+        self.assertEqual(keys[-3:], [f".cache/frontend-assets/{digest}", "data.json", "index.html"])
+        self.assertTrue(all("immutable" in call.kwargs["CacheControl"] for call in calls[:len(assets)]))
+        dashboard.invalidate_cloudfront.assert_awaited_once_with(['/', '/index.html', '/data.json'])
+
+    async def test_cached_bundle_is_not_uploaded_again(self):
+        dashboard = self.dashboard()
+        dashboard.s3_client.head_object.side_effect = None
+        await dashboard.publish_frontend_assets()
+        dashboard.s3_client.put_object.assert_not_called()
+
+    async def test_failed_asset_upload_does_not_replace_dashboard(self):
+        dashboard = self.dashboard()
+        dashboard.s3_client.put_object.side_effect = RuntimeError("upload failed")
+        result = await dashboard.run()
+        self.assertEqual(result["statusCode"], 500)
+        keys = [call.kwargs["Key"] for call in dashboard.s3_client.put_object.call_args_list]
+        self.assertNotIn("index.html", keys)
+        self.assertNotIn("data.json", keys)
+
+    async def test_permission_error_is_not_treated_as_missing_assets(self):
+        dashboard = self.dashboard()
+        dashboard.s3_client.head_object.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied"}}, "HeadObject"
+        )
+        with self.assertRaises(ClientError):
+            await dashboard.publish_frontend_assets()
+        dashboard.s3_client.put_object.assert_not_called()
 
 
 if __name__ == "__main__":

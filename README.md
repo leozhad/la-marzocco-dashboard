@@ -4,6 +4,46 @@ A serverless web dashboard for monitoring your La Marzocco espresso machine, bui
 
 ![Application Architecture](generated-diagrams/application-architecture.png)
 
+
+## Interactive dashboard (v3.0.0)
+
+The dashboard uses a responsive Three.js frontend with the user's white, stainless steel, and walnut Linea Mini configuration. The 3D model includes the twin metal knobs, walnut paddle and portafilter handle, pressure gauges, warming-tray cups, and La Marzocco Connected Scale. Orbit, front/top camera views, and assembled/cutaway/exploded modes are available. On phones, tap **Interact with 3D** to rotate; normal vertical scrolling is preserved until interaction is enabled.
+
+**Matrix mode** is optional and persistent. Subtle green/copper numeric and coffee glyphs run behind the dashboard; reduced-motion settings use a static version, and animation pauses when the tab is hidden.
+
+The frontend checks `data.json` every minute while visible. Collection still runs every five minutes. Updates preserve the selected shot, camera, view, and Matrix setting. Delayed or failed refreshes keep the last successful readings and show a freshness warning.
+
+### Frontend development
+
+- `web/index.html`: page shell and safely embedded initial JSON.
+- `web/dashboard.css`, `web/dashboard.js`: responsive layout, telemetry, tabs, shot comparisons, and refresh handling.
+- `web/machine.js`: procedural 3D machine, materials, orbit controls, and model modes.
+- `web/matrix.js`: optional background effect and reduced-motion handling.
+- `web/vendor/`: Three.js 0.170.0, OrbitControls, RoomEnvironment, and upstream MIT license.
+- `tools/preview.py`: stages the production frontend locally without contacting AWS.
+
+```bash
+curl -fsS https://espresso.leozh.net/data.json -o /tmp/espresso-data.json
+python tools/preview.py --data /tmp/espresso-data.json
+python -m http.server 8769 --bind 127.0.0.1 --directory build/preview
+```
+
+Regenerate the preview after editing frontend files. `window.espressoDiagnostics()` exposes current data age/status, selected shot, renderer/model state, and Matrix state for browser checks.
+
+### Publishing frontend assets
+
+Every Lambda package must include `web/` next to `lambda_function.py`; `buildspec.yml` and the manual packaging script include this step. The CodeBuild project reads `buildspec.yml` from the source artifact so packaging and tests evolve with each commit. Static files are uploaded to `assets/<content-hash>/` with immutable cache headers. A completion marker avoids re-uploading them on subsequent runs. Only after the entire bundle is available does Lambda publish JSON and then HTML. Failed collection or asset publication preserves the previous dashboard.
+
+The current release path uses the private GitLab commit, the existing AWS CodeBuild project, and a direct Lambda code update. GitHub publication remains subject to Code Defender's repository approval; no guardrail bypass is used.
+
+### Model references and limitations
+
+- [Linea Mini parts catalog V1.5](https://lamarzoccousa.com/wp-content/uploads/2019/04/Lineamini_Parts_Catalog_V1.5COLOR.pdf): cabinet proportions, body panels, integrated group, boiler, and gauge assemblies. The catalog lists a 0.17 L integrated brew boiler and a 3 L steam boiler.
+- [La Marzocco Connected Scale](https://home.lamarzoccousa.com/product/connected-scale/): the Acaia collaboration previously named Brew-by-Weight Scale. The 3D scale follows its black body, front display strip, and branding.
+- The user's photo supplies the exterior finish and wood controls. The photo itself is not a deployed asset.
+
+The model is a visual reconstruction, not service CAD. Internal placement, gauges, and circuit animation are illustrative. Gauge needles do not represent measured pressure; the cloud feed exposes boiler targets/readiness, scale connection/battery, and completed-shot yields, not a continuous pressure or scale-weight trace.
+
 ## Features
 
 - **Real-time machine status** (power, temperature, water level)

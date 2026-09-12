@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111d20">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111d20'/%3E%3Cpath d='M7 9h16v12H7zM11 25h8m-3-12v5' fill='none' stroke='%23e3b47e' stroke-width='2'/%3E%3C/svg%3E">
+<title>Espresso Replicator · La Marzocco dashboard</title>
+<link rel="stylesheet" href="{{ asset_prefix }}/dashboard.css">
+</head>
+<body>
+<canvas id="matrix-canvas" aria-hidden="true"></canvas>
+<div class="shell">
+  <header class="masthead">
+    <div class="brand"><svg viewBox="0 0 44 38" aria-hidden="true"><path d="M4 8h27v19H4zM8 4h19M10 13h15M15 13v8m-5 2h16M10 31h16m5-11 10 8"/><circle cx="10" cy="17" r="2"/></svg><span>ESPRESSO<br>REPLICATOR</span></div>
+    <nav class="nav" role="tablist" aria-label="Explore the machine">
+      <button role="tab" id="tab-overview" data-tab="overview" aria-selected="true" aria-controls="overview"><small>01</small> The machine</button>
+      <button role="tab" id="tab-journal" data-tab="journal" aria-selected="false" aria-controls="journal" tabindex="-1"><small>02</small> Brew log</button>
+      <button role="tab" id="tab-inside" data-tab="inside" aria-selected="false" aria-controls="inside" tabindex="-1"><small>03</small> Look inside</button>
+    </nav>
+    <div class="header-actions"><button id="refresh-data" aria-label="Refresh machine data" title="Refresh data">↻</button><button id="matrix-toggle" aria-pressed="false"><span class="matrix-icon" aria-hidden="true">▥</span> Matrix <span class="matrix-state">Off</span></button></div>
+  </header>
+  <section class="intro">
+    <div><div class="eyebrow">FLORENCE, ITALY <span>/</span> AT HOME</div><h1>La Marzocco <em>Linea Mini</em></h1><p>A daily ritual. A closer look.</p></div>
+    <div class="freshness"><strong><span class="dot" id="freshness-dot"></span><span id="freshness-label">Loading machine status</span></strong><span id="snapshot-time"></span></div>
+  </section>
+  <main>
+    <section id="overview" class="panel" role="tabpanel" aria-labelledby="tab-overview">
+      <div class="overview-grid">
+        <div class="scene">
+          <div class="scene-top"><span class="scene-label">THE LINEA MINI · WHITE</span><span class="pill" id="machine-state">READY TO BREW</span></div>
+          <div id="machine-viewport" role="img" aria-label="Rotatable 3D model of your white Linea Mini with stainless steel and walnut details"><p id="model-loading">Loading your Linea Mini…</p></div>
+          <div class="model-modes" role="group" aria-label="Machine display mode"><button data-mode="assembled" aria-pressed="true">Assembled</button><button data-mode="cutaway" aria-pressed="false">Cutaway</button><button data-mode="exploded" aria-pressed="false">Exploded</button></div>
+          <div class="camera-tools" role="group" aria-label="Camera controls"><button data-camera="home" aria-label="Reset 3D camera" title="Reset view">⌂</button><button data-camera="front" aria-label="View machine from the front" title="Front view">▣</button><button data-camera="top" aria-label="View machine from above" title="Top view">⊤</button><button id="rotate-model" aria-pressed="false" aria-label="Automatically rotate the machine" title="Auto rotate">↻</button></div>
+          <button id="interact-model" aria-pressed="false">Interact with 3D</button>
+          <button class="hotspot boiler" data-component="boiler" aria-label="Inspect the coffee boiler" aria-pressed="true"><span>1</span></button>
+          <button class="hotspot group" data-component="group" aria-label="Inspect brewing configuration" aria-pressed="false"><span>2</span></button>
+          <button class="hotspot scale" data-component="scale" aria-label="Inspect the connected scale" aria-pressed="false"><span>3</span></button>
+          <p class="scene-note" id="model-hint">DRAG TO ORBIT · SCROLL TO ZOOM · SELECT A COMPONENT</p>
+        </div>
+        <aside class="instruments" aria-label="Recorded machine readings">
+          <div class="instrument-head"><span class="kicker">The essentials</span><small>01 / 03</small></div>
+          <div class="instrument"><div class="label">Coffee boiler target</div><div class="big-number"><span id="boiler-value"></span><small>°F</small></div><div class="instrument-foot"><span class="ready" id="boiler-status"></span><span>Reported setting</span></div></div>
+          <div class="instrument-pair"><div class="instrument"><div class="label">Steam boiler</div><div class="big-number" id="steam-value"></div><div class="instrument-foot">Machine-reported</div></div><div class="instrument"><div class="label">Scale battery</div><div class="big-number"><span id="battery-value"></span><small>%</small></div><div class="instrument-foot" id="scale-state"></div></div></div>
+          <div class="component-detail" aria-live="polite"><strong id="component-title"></strong><p id="component-description"></p></div>
+        </aside>
+      </div>
+      <div class="lower-grid">
+        <section class="block">
+          <div class="section-head"><div><div class="kicker">A little closer</div><h2 id="latest-title">The latest shot</h2></div><button data-open="journal">Explore shots ↗</button></div>
+          <div class="shot-metrics"><div><strong><b class="duration" style="font-weight:400"></b><small>s</small></strong><span>Extraction time</span></div><div><strong><b class="yield" style="font-weight:400"></b><small>g</small></strong><span>Yield in cup</span></div><div><strong><b class="target" style="font-weight:400"></b><small>°F</small></strong><span>Brew target</span></div></div>
+          <div class="shot-meta"><span class="shot-date"></span><span class="shot-dose"></span></div>
+          <div class="mini-shots" aria-label="Select a recent shot"></div>
+        </section>
+        <section class="block">
+          <div class="section-head"><div><div class="kicker">The daily ritual</div><h2>Seven days, in coffee</h2></div><div class="legend"><span><i></i>Shots</span><span><i class="water"></i>Flushes</span></div></div>
+          <div class="week-total"><span><strong id="week-shots"></strong> shots</span><span class="flush"><strong id="week-flushes"></strong> flushes</span></div>
+          <div class="week-bars"></div><p class="day-readout" aria-live="polite">Select a day to see its activity.</p>
+        </section>
+      </div>
+      <details class="utility"><summary>Machine details, maintenance & firmware</summary><div class="utility-grid"><div><div class="kicker">Lifetime activity</div><p id="lifetime"></p></div><div><div class="kicker">Care & configuration</div><p id="maintenance"></p><div id="network-details"></div></div><div><div class="kicker">Installed firmware</div><p id="firmware"></p><div id="firmware-notes"></div></div></div><p class="model-fidelity">3D exterior matched to your reference photo. Internal placement and analog gauge needles are illustrative; pressure isn’t reported by the cloud API. <a href="https://lamarzoccousa.com/wp-content/uploads/2019/04/Lineamini_Parts_Catalog_V1.5COLOR.pdf" target="_blank" rel="noopener">Parts catalog ↗</a> · <a href="https://home.lamarzoccousa.com/product/connected-scale/" target="_blank" rel="noopener">Connected Scale ↗</a></p></details>
+    </section>
+    <section id="journal" class="panel" role="tabpanel" aria-labelledby="tab-journal" hidden>
+      <div class="journal-layout"><section class="block"><div class="section-head"><div><div class="kicker">Recorded extractions</div><h2>Your recent extractions.</h2></div></div><table class="journal-list"><thead><tr><th scope="col">Shot</th><th scope="col">Time</th><th scope="col">Yield</th><th scope="col">Target</th></tr></thead><tbody></tbody></table><p class="journal-note">Select an extraction to compare it with the others. Time and yield describe consistency; they don’t tell us how the coffee tasted.</p></section><aside class="block"><div class="section-head"><div><div class="kicker">Selected extraction</div><h2 id="journal-title">The latest shot</h2></div></div><div class="shot-metrics"><div><strong><b class="duration" style="font-weight:400"></b><small>s</small></strong><span>Extraction</span></div><div><strong><b class="yield" style="font-weight:400"></b><small>g</small></strong><span>Yield in cup</span></div><div><strong><b class="target" style="font-weight:400"></b><small>°F</small></strong><span>Brew target</span></div></div><p class="shot-date" style="color:var(--muted);font-size:11px"></p><div class="comparison"><div class="kicker">Against these five shots</div><p id="comparison"></p></div><p class="journal-note">Yield is the beverage weight recorded by the scale. Dry coffee dose and tasting notes aren’t reported by the machine, so a brew ratio or taste score isn’t inferred.</p></aside></div>
+    </section>
+    <section id="inside" class="panel" role="tabpanel" aria-labelledby="tab-inside" hidden>
+      <div class="inside-layout"><div class="circuit"><div class="kicker">From water to espresso</div>
+        <svg viewBox="0 0 680 370" role="img" aria-label="Illustrative diagram of separate brewing and steaming circuits">
+          <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 10 5 0 10z" fill="#86c4d3"/></marker></defs>
+          <path class="pipe" d="M105 180h105m80 0h75" marker-end="url(#arrow)"/><path class="pipe hot" d="M465 180h100v70m-100-70" /><path class="pipe" d="M320 180V70h45"/><path class="pipe hot" d="M465 70h115v35"/>
+          <path class="flow" d="M105 180h260m100 0h100v70M320 180V70h45m100 0h115v35"/>
+          <rect x="35" y="142" width="75" height="76" rx="6" fill="#192f34" stroke="#6ba0ad"/><path d="M45 179q12-9 23 0t25 0v29H45z" fill="#86c4d333"/><text x="73" y="241" text-anchor="middle">Water supply</text>
+          <circle cx="248" cy="180" r="37" fill="#1e3237" stroke="#86c4d3"/><path d="m234 161 30 19-30 19z" fill="#86c4d333" stroke="#86c4d3"/><text x="248" y="241" text-anchor="middle">Pump</text>
+          <rect x="365" y="142" width="100" height="76" rx="12" fill="#483831" stroke="#e3b47e"/><path d="m385 177 12-9 12 18 12-18 12 18 12-9" stroke="#e3b47e" fill="none" stroke-width="2"/><text x="415" y="241" text-anchor="middle">Brew boiler</text><text x="415" y="261" text-anchor="middle" style="fill:#a1b1b0;font-size:10px">Dedicated brew circuit</text>
+          <rect x="365" y="34" width="100" height="74" rx="12" fill="#483831" stroke="#e3b47e"/><path d="m385 69 12-9 12 18 12-18 12 18 12-9" stroke="#e3b47e" fill="none" stroke-width="2"/><text x="415" y="24" text-anchor="middle">Steam boiler</text>
+          <path d="M568 108h22m-18 5q-9 10 0 19m11-19q-9 10 0 19" stroke="#e5e9dd" fill="none" stroke-width="2"/><text x="588" y="156" text-anchor="middle">Steam wand</text>
+          <path d="M546 251h38v15h-38zm5 16v14h28v-14" fill="#758984" stroke="#d5ded0"/><text x="565" y="313" text-anchor="middle">Group → cup</text>
+        </svg>
+        <div class="mobile-circuit" aria-label="Illustrative water circuits">
+          <div class="mobile-source">Water supply → pump</div>
+          <div class="mobile-tracks">
+            <ol aria-label="Brewing circuit"><li>Brew boiler</li><li>Group</li><li>Espresso</li></ol>
+            <ol aria-label="Steam circuit"><li>Steam boiler</li><li>Steam wand</li></ol>
+          </div>
+        </div>
+        <p class="circuit-note">Educational schematic. Layout and flow are illustrative, not measured telemetry or a service diagram.</p></div>
+        <aside class="inside-aside"><div class="kicker">Inside your machine</div><h2>Two circuits.<br>One ritual.</h2><p>A dedicated brew circuit prepares the espresso. A separate steam boiler provides steam for milk.</p><p>Use the 3D cutaway to reveal the boilers, pump, and copper lines. Internal placement is schematic; the exterior follows your machine’s white, stainless steel, and walnut finish.</p><button class="action secondary-action" id="open-cutaway">Explore the 3D cutaway ↗</button><button class="action" id="flow-toggle" aria-pressed="false">Trace the water paths</button><p style="font-size:10px">This control animates the illustration. It does not operate the machine.</p></aside>
+      </div>
+    </section>
+  </main>
+  <footer class="footer"><span>Espresso Replicator · La Marzocco Cloud · Updates every 5 minutes</span><a href="https://garage.yolo.ventures/" target="_blank" rel="noopener">Visit the Mechanical Archive ↗</a></footer>
+</div>
+<script id="machine-data" type="application/json">{{ dashboard_data|tojson }}</script>
+<script type="importmap">{"imports":{"three":"{{ asset_prefix }}/vendor/three.module.js"}}</script>
+<script type="module" src="{{ asset_prefix }}/dashboard.js"></script>
+</body></html>

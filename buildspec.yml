@@ -18,8 +18,10 @@ phases:
       - echo "Building Lambda deployment package..."
       - mkdir -p lambda-package
       - cp src/lambda_function.py lambda-package/
+      - cp -R web lambda-package/web
       - cd lambda-package
       - pip install -r ../requirements.txt -t .
+      - PYTHONPATH=. python -m unittest discover -s ../tests -p '*_test.py' -v
       - zip -r ../lambda-deployment-package.zip .
       - cd ..
       - ls -la lambda-deployment-package.zip

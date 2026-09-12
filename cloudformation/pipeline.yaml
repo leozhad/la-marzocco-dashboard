@@ -124,29 +124,7 @@ Resources:
         PrivilegedMode: false
       Source:
         Type: CODEPIPELINE
-        BuildSpec: |
-          version: 0.2
-          phases:
-            install:
-              runtime-versions:
-                python: 3.12
-            pre_build:
-              commands:
-                - echo Build started on `date`
-                - echo Installing Python dependencies...
-            build:
-              commands:
-                - echo Building Lambda deployment package...
-                - mkdir -p lambda-package
-                - cp src/lambda_function.py lambda-package/
-                - cd lambda-package
-                - pip install -r ../requirements.txt -t .
-                - zip -r ../lambda-deployment-package.zip .
-                - cd ..
-                - echo Build completed on `date`
-          artifacts:
-            files:
-              - '**/*'
+        BuildSpec: buildspec.yml
       TimeoutInMinutes: 10
 
   # CloudFormation Service Role

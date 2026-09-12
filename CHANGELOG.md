@@ -5,6 +5,23 @@ All notable changes to the La Marzocco Dashboard project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-09-11
+
+### Added
+- Responsive dashboard with machine, brew-log, and internal-circuit views.
+- Rotatable white/stainless/walnut Linea Mini model, matching the user's reference photo and informed by the V1.5 parts catalog.
+- Assembled, cutaway, and exploded modes; front/top camera presets; touch interaction toggle.
+- La Marzocco Connected Scale geometry and component information.
+- Persistent Matrix mode with reduced-motion and hidden-tab handling.
+- Background data refresh, freshness warnings, and preserved camera/shot selection.
+- Content-addressed static asset publication before the HTML entry point.
+- Offline preview tool and asset-publication regression coverage.
+
+### Changed
+- Move the page template, styles, and browser code out of the Python collector into `web/`.
+- Package `web/` in CodeBuild and manual deployments.
+- Invalidate both `/` and `/index.html` when the page changes.
+
 ## [2.4.0] - 2026-09-11
 
 ### Added

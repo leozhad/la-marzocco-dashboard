@@ -56,6 +56,7 @@ echo "Using temporary directory: $TEMP_DIR"
 
 # Copy Lambda function
 cp src/lambda_function.py "$TEMP_DIR/"
+cp -R web "$TEMP_DIR/web"
 
 # Install Python dependencies
 echo "Installing Python dependencies..."

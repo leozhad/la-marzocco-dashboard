@@ -1,0 +1,2 @@
+# Preserve upstream Three.js formatting and keep dependency diffs separate.
+web/vendor/** linguist-vendored=true whitespace=-space-before-tab

@@ -26,7 +26,7 @@ This is a serverless AWS-based dashboard for monitoring La Marzocco espresso mac
 
 ### Python Dependencies
 ```
-pylamarzocco (from GitHub)
+pylamarzocco==2.4.3
 jinja2>=3.1.0
 boto3>=1.26.0
 botocore>=1.29.0
@@ -67,7 +67,7 @@ la-marzocco-dashboard/
 │   ├── parameters.json              # Application parameters
 │   └── pipeline-parameters.json     # Pipeline parameters
 ├── src/
-│   └── lambda_function.py           # Main Lambda function (2046 lines)
+│   └── lambda_function.py           # Data collector and versioned frontend publisher
 ├── requirements.txt                 # Python dependencies
 ├── buildspec.yml                    # CodeBuild specification
 ├── deploy-pipeline.sh               # Pipeline deployment script
@@ -105,9 +105,9 @@ The Lambda function collects comprehensive machine data:
 ### HTML Dashboard
 - Responsive design with mobile optimization
 - Dark theme optimized for coffee shops
-- Auto-refresh every 5 minutes
-- Matrix-style coffee emoji background (toggleable)
-- Chart.js visualizations for usage statistics
+- Collection every 5 minutes; browser JSON refresh every minute
+- Optional Matrix background with persistent settings and reduced-motion handling
+- Three.js machine viewer and responsive daily-activity/shot views
 - Real-time timestamp conversion to local timezone
 
 ## Deployment Configuration
@@ -325,3 +325,7 @@ curl -I https://espresso.leozh.net
   - Step Functions for orchestration
   - API Gateway for REST API
   - Cognito for user management
+
+## Frontend v3
+
+`web/` contains the production frontend and vendored Three.js modules. Bundle it alongside the Lambda module. `frontend_bundle()` computes an asset content hash; Lambda publishes all assets before data and HTML, caching a completion marker in S3. Use `tools/preview.py` for offline rendering from an existing data snapshot. The current release uses private GitLab source and AWS CodeBuild with a direct Lambda update; the GitHub repository remains blocked pending approval.
