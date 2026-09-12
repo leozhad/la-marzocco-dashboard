@@ -215,6 +215,10 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
   }
   // The broad walnut group cover is fixed. Only the narrow, steel-inlaid
   // lever sweeps around the central vertical spindle (right OFF, left BREW).
+  const coverAssembly = new THREE.Group();
+  // Leave the panel-mounted red/blue indicator bezels outside the wood envelope.
+  coverAssembly.scale.x = .87;
+  front.add(coverAssembly);
   const coverShape = new THREE.Shape();
   coverShape.moveTo(-.79,.11);
   coverShape.quadraticCurveTo(-.9,.12,-.86,.27);
@@ -222,17 +226,17 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
   coverShape.quadraticCurveTo(.9,.12,.79,.11);
   coverShape.lineTo(-.79,.11);
   const coverWood=mat.wood.clone();coverWood.color.setHex(0xa2815f);coverWood.roughness=.36;
-  const housing=woodProfile(coverShape,.35,[0,.045,0],coverWood,front,'fixed-walnut-group-cover');
+  const housing=woodProfile(coverShape,.35,[0,.045,0],coverWood,coverAssembly,'fixed-walnut-group-cover');
   housing.rotation.x=Math.PI/2;housing.userData.component='group';
-  const slot=woodProfile(coverShape,.065,[0,-.17,-.01],mat.black,front,'paddle-travel-slot');
+  const slot=woodProfile(coverShape,.065,[0,-.17,-.01],mat.black,coverAssembly,'paddle-travel-slot');
   slot.rotation.x=Math.PI/2;slot.scale.set(.985,.985,1);
-  const trim=woodProfile(coverShape,.065,[0,-.245,0],coverWood,front,'fixed-walnut-lower-trim');
+  const trim=woodProfile(coverShape,.065,[0,-.245,0],coverWood,coverAssembly,'fixed-walnut-lower-trim');
   trim.rotation.x=Math.PI/2;
-  for(const [x,z] of [[-.6,.235],[.6,.235],[0,.49]])cylinder(.025,.009,[x,.232,z],mat.brushed,front);
+  for(const [x,z] of [[-.6,.235],[.6,.235],[0,.49]])cylinder(.025,.009,[x,.232,z],mat.brushed,coverAssembly);
   const engraving=texture((ctx,w,h)=>{
     ctx.clearRect(0,0,w,h);ctx.fillStyle='#493320';ctx.textAlign='center';ctx.font='italic 40px Georgia';ctx.fillText('la marzocco',w/2,h*.65);
   },512,96);
-  const engravingPlane=mesh(new THREE.PlaneGeometry(.49,.09),new THREE.MeshBasicMaterial({map:engraving,transparent:true,depthWrite:false}),front,[-.1,.252,.275]);
+  const engravingPlane=mesh(new THREE.PlaneGeometry(.49,.09),new THREE.MeshBasicMaterial({map:engraving,transparent:true,depthWrite:false}),coverAssembly,[-.1,.252,.275]);
   engravingPlane.rotation.x=-Math.PI/2;
 
   const paddlePivot = new THREE.Group();paddlePivot.position.set(0,0,.15);front.add(paddlePivot);
@@ -317,7 +321,6 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
   cylinder(0.06, 0.15, [1.52,0.86,2.24], mat.brushed);
   tube([[-1.08,2.48,1.69],[-1.11,2.28,1.88],[-1.09,2.06,1.96]], 0.066, mat.chrome);
   cylinder(0.095, 0.12, [-1.09,2.06,1.96], mat.brushed);
-  box([0.11,0.3,0.07],[-1.39,2.2,1.72],mat.black);
 
   // Recessed scale tray: the Connected Scale sits in a cutout, flush with the grille.
   box([3.63,0.45,1.4],[0,0.48,1.96],mat.white,machine,0.07);
