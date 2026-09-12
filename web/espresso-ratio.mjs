@@ -1,5 +1,5 @@
 // A brew ratio needs dry coffee mass; beverage yield alone cannot determine it.
-export const DEFAULT_COFFEE_DOSE_G = null;
+export const DEFAULT_COFFEE_DOSE_G = 18;
 
 export function validDose(value) {
   return Number.isFinite(value) && value > 0 && value <= 50;

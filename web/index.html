@@ -38,7 +38,7 @@
           <button class="hotspot group" data-component="group" aria-label="Inspect brewing configuration" aria-pressed="false"><span>2</span></button>
           <button class="hotspot scale" data-component="scale" aria-label="Inspect the connected scale" aria-pressed="false"><span>3</span></button>
           <button class="hotspot iot" data-component="iot" aria-label="Inspect the ESP32 connectivity gateway" aria-pressed="false" hidden><span>4</span></button>
-          <p class="scene-note" id="model-hint">DRAG TO ORBIT · CLICK THE PADDLE TO REPLAY A SHOT</p>
+          <p class="scene-note" id="model-hint">DRAG TO ORBIT · PADDLE RIGHT: OFF · LEFT: BREW</p>
           <div class="shot-controls">
             <div class="replay-topline"><span class="kicker">SHOT REPLAY</span><span id="replay-selected">Select a recorded shot</span><span class="replay-tag">ILLUSTRATIVE FLOW</span></div>
             <div class="replay-actions"><button id="play-shot" class="replay-play" data-replay-play aria-pressed="false" disabled>▶ Play selected shot</button><button id="reset-shot" aria-label="Reset shot replay">↺</button><span id="replay-phase" role="status">Ready to replay</span><label for="replay-speed">Speed <select id="replay-speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div>
@@ -77,7 +77,7 @@
         <div class="scene inside-model-stage" id="inside-model-slot"></div>
         <aside class="inside-aside">
           <div class="kicker">Inside your machine</div><h2>Follow the shot.</h2>
-          <p>Watch the paddle open, the pump feed the integrated brew group, and espresso collect on the Connected Scale. At the end, the paddle closes and the drain valve releases.</p>
+          <p>The narrow lever moves from right (off) to left (brew), activating a microswitch. The wooden group cover stays fixed. Brew-by-weight stops the flow at the selected yield; click the paddle again to return it right.</p>
           <div class="inside-selected"><span class="kicker">SELECTED SHOT</span><strong class="shot-date"></strong><span><b class="duration"></b>s · <b class="yield"></b>g · <b class="target"></b>°F target · <b class="ratio">—</b> ratio</span></div>
           <button id="inside-play-shot" class="action" data-replay-play aria-pressed="false" disabled>▶ Play selected shot</button>
           <button class="action secondary-action" id="choose-replay-shot">Choose another shot ↗</button>

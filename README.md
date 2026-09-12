@@ -46,15 +46,21 @@ The model is a visual reconstruction, not service CAD. Internal placement, gauge
 
 ## Shot replay, connectivity, and ratios (v3.1.0)
 
-Click the modeled walnut paddle or **Play selected shot** to replay the current shot. The replay uses its recorded duration and final beverage yield. Flow, intermediate fill levels, component motion, scale animation, and the short drain sequence are illustrative. No machine-control commands are sent. Playback supports pause/resume, reset, and 1x/2x/4x speed. The machine and Look Inside views share one renderer; view/camera state is preserved when switching tabs.
+Click the narrow modeled paddle to move it from right (OFF) to left (BREW), or use **Play selected shot** to replay the current shot. The broad walnut cover stays fixed. With brew-by-weight, the pump stops at the recorded yield while the manual lever remains left; click the paddle again to return it right. Clicking it during a replay stops the simulated flow early. The playback buttons separately provide pause/resume and reset. The replay uses its recorded duration and final beverage yield. Flow, intermediate fill levels, component motion, scale animation, and the short drain sequence are illustrative. No machine-control commands are sent. Playback supports pause/resume, reset, and 1x/2x/4x speed. The machine and Look Inside views share one renderer; view/camera state is preserved when switching tabs.
 
 The modeled electronics distinguish the controller from the ESP32 gateway. The machine's captured API data reports `gatewayHw: Esp32`. La Marzocco's [connected-board announcement](https://home.lamarzoccousa.com/linea-mini-connected-machine-retrofit-kits-are-now-available/) says these boards were standard from LM015906. The [installation guide](https://home.lamarzoccousa.com/installation-guide-linea-mini-connected-machine-retrofit-kit/) documents a serial gateway connection to the controller. PCB details and placement are illustrative, not wiring instructions.
 
-Brew ratio means **dry coffee mass : beverage mass**, normalized to 1:x. For example, 18g dry coffee and 36g espresso is 1:2. The machine feed does not report dry dose, so ratios remain unset until the viewer enters a recipe default or per-shot override in **Brew log**. Inputs are stored locally on that device and are explicitly labeled as recipe defaults or per-shot entries. [Manufacturer ratio guide](https://home.lamarzoccousa.com/using-espresso-brew-ratios/).
+Brew ratio means **dry coffee mass : beverage mass**, normalized to 1:x. For example, 18g dry coffee and 36g espresso is 1:2. The owner-provided recipe default is **18g**. The machine feed does not report dry dose, so ratios are labeled as using that recipe default; viewers can change it or enter per-shot overrides in **Brew log**. Inputs are stored locally on that device and are explicitly labeled as recipe defaults or per-shot entries. [Manufacturer ratio guide](https://home.lamarzoccousa.com/using-espresso-brew-ratios/).
 
 The scale is recessed into a grille cutout to match the owner's installation. The [current OEM Connected Scale Drain Tray](https://home.lamarzoccousa.com/product/linea-mini-connected-scale-drain-tray/) illustrates nearly flush mounting, but its listed compatibility is MI-series machines; that specific SKU is not asserted to be fitted to this LM-series machine.
 
 Run browser-independent replay and ratio checks with `node --test tests/*_test.mjs`. CodeBuild runs these in addition to the Python regression suite.
+
+### Paddle and scale verification (2026-09-12)
+
+The updated close-up photo shows a fixed rounded walnut group cover and a separate narrow, downturned wood/steel lever. The [classic Linea Mini manual](https://home.lamarzoccousa.com/wp-content/uploads/2023/09/Linea-Mini-Manual.pdf), page 13, specifies right-to-left motion to start brewing; the parts catalog shows the central vertical spindle and microswitch. Lever angular limits remain a visual reconstruction. [La Marzocco's guide](https://home.lamarzoccousa.com/comprehensive-guide-to-the-linea-mini-is-it-right-for-you/) describes this as an EE on/off microswitch, not pressure profiling.
+
+A raw cloud read with the scale switched on confirmed `ThingScale.connected=true`, 100% battery, and beverage presets of 36g/45g. The raw scale widget contained no live mass or dry-dose field, all returned shot `doseValueNumerator` values were null, and the station listed no paired grinder. [La Marzocco's brew-by-weight guide](https://home.lamarzoccousa.com/using-brew-by-weight-with-the-linea-mini/) explicitly defines its dose setting as output espresso mass. Thus the 18g recipe is user-supplied rather than a scale measurement.
 
 ## Features
 

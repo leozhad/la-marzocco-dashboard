@@ -7,6 +7,7 @@ export class ShotReplay {
     this.drainElapsed = 0;
     this.speed = 1;
     this.pausedFrom = 'playing';
+    this.paddleReleased = true;
   }
 
   start(shot) {
@@ -18,6 +19,7 @@ export class ShotReplay {
     this.elapsed = 0;
     this.drainElapsed = 0;
     this.status = 'playing';
+    this.paddleReleased = false;
     return this.snapshot();
   }
 
@@ -43,6 +45,18 @@ export class ShotReplay {
     this.status = 'idle';
     this.elapsed = 0;
     this.drainElapsed = 0;
+    this.paddleReleased = true;
+    return this.snapshot();
+  }
+
+  releasePaddle() {
+    this.paddleReleased = true;
+    if (this.status === 'playing' || (this.status === 'paused' && this.pausedFrom === 'playing')) {
+      this.status = 'draining';
+      this.drainElapsed = 0;
+    } else if (this.status === 'paused' && this.pausedFrom === 'draining') {
+      this.status = 'draining';
+    }
     return this.snapshot();
   }
 
@@ -72,10 +86,15 @@ export class ShotReplay {
     const duration = this.shot?.extraction_seconds || 0;
     const progress = duration ? Math.min(1, this.elapsed / duration) : 0;
     const effective = this.status === 'paused' ? this.pausedFrom : this.status;
+    const brewByWeight = ['MassType', 'Dose1', 'Dose2'].includes(this.shot?.dose_mode);
+    const paddleOn = !this.paddleReleased &&
+      (effective === 'playing' || (brewByWeight && ['draining', 'complete'].includes(effective)));
     const phase = this.status === 'idle' ? 'Ready to replay' :
-      effective === 'playing' && this.elapsed < Math.min(.8, duration * .1) ? 'Paddle on · pump starts' :
+      effective === 'playing' && this.elapsed < Math.min(.8, duration * .1) ? 'Paddle left · pump starts' :
       effective === 'playing' ? 'Water through group · extraction' :
-      effective === 'draining' ? 'Paddle off · drain valve releases' : 'Shot complete';
+      effective === 'draining' ? 'Flow stopped · drain valve releases' :
+      this.elapsed < duration ? 'Paddle right · replay stopped early' :
+      paddleOn ? 'Shot complete · return paddle right' : 'Shot complete';
     return {
       status: this.status, phase, elapsed: this.elapsed, duration, progress,
       yield: (this.shot?.dose_value || 0) * Math.pow(progress, 1.15),
@@ -83,6 +102,7 @@ export class ShotReplay {
       drainProgress: this.drainElapsed / 1.2, speed: this.speed,
       active: this.status === 'playing' || this.status === 'draining',
       pumpOn: effective === 'playing' && this.status !== 'idle',
+      paddleOn,
     };
   }
 }

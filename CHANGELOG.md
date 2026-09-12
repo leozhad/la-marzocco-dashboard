@@ -5,6 +5,14 @@ All notable changes to the La Marzocco Dashboard project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2026-09-12
+
+### Fixed
+- Rebuild the fixed walnut group cover and separate wood/steel paddle from the new close-up photo.
+- Correct the central pivot and right-OFF / left-BREW movement.
+- Brew-by-weight replay stops flow without automatically moving the manual paddle back; paddle clicks return it right or stop an ongoing replay.
+- Set the owner-confirmed dry coffee recipe default to 18g, retaining per-shot overrides.
+
 ## [3.1.0] - 2026-09-11
 
 ### Added

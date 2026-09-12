@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
 import { RoomEnvironment } from './vendor/RoomEnvironment.js';
 import { ShotReplay } from './shot-replay.mjs';
+import { paddleAngle, PADDLE_OFF_ANGLE } from './paddle-kinematics.mjs';
 
 // Exterior proportions follow the supplied white/walnut Linea Mini photograph.
 // Hidden plumbing and boiler placement are schematic, not factory CAD.
@@ -207,36 +208,55 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
   const fascia = box([3.49, 1.12, 0.16], [0, 0, 0], mat.white, front, 0.08, 'white-fascia');
   for (const x of [-1.31, 1.31]) {
     cylinder(0.325, 0.06, [x, 0, 0.12], mat.chrome, front, 'z', 'metal-control-ring');
-    cylinder(0.27, 0.16, [x, 0, 0.21], mat.brushed, front, 'z', 'brushed-control-knob');
-    cylinder(0.21, 0.01, [x, 0, 0.297], mat.brushed, front, 'z');
-    box([0.01, 0.12, 0.006], [x, 0.13, 0.307], mat.steel, front, 0.002);
+    cylinder(0.28, 0.2, [x, 0, 0.225], mat.wood, front, 'z', 'walnut-control-collar');
+    cylinder(0.273, 0.035, [x, 0, 0.345], mat.chrome, front, 'z', 'metal-control-cap');
+    cylinder(0.21, 0.01, [x, 0, 0.369], mat.brushed, front, 'z');
+    box([0.01, 0.12, 0.006], [x, 0.13, 0.38], mat.steel, front, 0.002);
   }
-  box([1.52, 0.44, 0.085], [0, -0.01, 0.14], mat.black, front, 0.065);
-  const mountShape = new THREE.Shape();
-  mountShape.moveTo(.46,.29); mountShape.quadraticCurveTo(.46,.34,.53,.32);
-  mountShape.lineTo(.92,.2); mountShape.quadraticCurveTo(.95,.18,.95,.12);
-  mountShape.lineTo(.93,-.17); mountShape.quadraticCurveTo(.92,-.21,.86,-.2);
-  mountShape.lineTo(.49,-.15); mountShape.quadraticCurveTo(.45,-.13,.46,-.07);
-  mountShape.closePath();
-  const mountWood=mat.wood.clone(); mountWood.color.setHex(0x805d42);
-  woodProfile(mountShape,.12,[0,0,.21],mountWood,front,'sculpted-walnut-paddle-mount');
-  const paddlePivot = new THREE.Group();paddlePivot.position.set(.54,0,.22);front.add(paddlePivot);
-  const paddleShape = new THREE.Shape();
-  paddleShape.moveTo(-.77,.17);
-  paddleShape.bezierCurveTo(-.37,.22,.18,.2,.44,.13);
-  paddleShape.quadraticCurveTo(.51,.1,.49,.035);
-  paddleShape.lineTo(.46,-.1);
-  paddleShape.bezierCurveTo(.1,-.2,-.39,-.23,-.77,-.17);
-  paddleShape.quadraticCurveTo(-.84,-.15,-.84,-.06);
-  paddleShape.lineTo(-.84,.075);
-  paddleShape.quadraticCurveTo(-.83,.15,-.77,.17);
-  const paddleWood=mat.wood.clone();paddleWood.color.setHex(0x9c7954);paddleWood.roughness=.38;
-  const paddle=woodProfile(paddleShape,.235,[-.54,0,.13],paddleWood,paddlePivot,'contoured-walnut-brew-paddle');
-  paddle.userData.action='shot';
-  for(const [x,y] of [[.54,.245],[.56,-.11]]) {
-    cylinder(.027,.014,[x,y,.291],mat.brushed,front,'z');
-    box([.029,.005,.005],[x,y,.303],mat.black,front,.001);
+  // The broad walnut group cover is fixed. Only the narrow, steel-inlaid
+  // lever sweeps around the central vertical spindle (right OFF, left BREW).
+  const coverShape = new THREE.Shape();
+  coverShape.moveTo(-.79,.11);
+  coverShape.quadraticCurveTo(-.9,.12,-.86,.27);
+  coverShape.bezierCurveTo(-.65,.75,.65,.75,.86,.27);
+  coverShape.quadraticCurveTo(.9,.12,.79,.11);
+  coverShape.lineTo(-.79,.11);
+  const coverWood=mat.wood.clone();coverWood.color.setHex(0xa2815f);coverWood.roughness=.36;
+  const housing=woodProfile(coverShape,.35,[0,.045,0],coverWood,front,'fixed-walnut-group-cover');
+  housing.rotation.x=Math.PI/2;housing.userData.component='group';
+  const slot=woodProfile(coverShape,.065,[0,-.17,-.01],mat.black,front,'paddle-travel-slot');
+  slot.rotation.x=Math.PI/2;slot.scale.set(.985,.985,1);
+  const trim=woodProfile(coverShape,.065,[0,-.245,0],coverWood,front,'fixed-walnut-lower-trim');
+  trim.rotation.x=Math.PI/2;
+  for(const [x,z] of [[-.6,.235],[.6,.235],[0,.49]])cylinder(.025,.009,[x,.232,z],mat.brushed,front);
+  const engraving=texture((ctx,w,h)=>{
+    ctx.clearRect(0,0,w,h);ctx.fillStyle='#493320';ctx.textAlign='center';ctx.font='italic 40px Georgia';ctx.fillText('la marzocco',w/2,h*.65);
+  },512,96);
+  const engravingPlane=mesh(new THREE.PlaneGeometry(.49,.09),new THREE.MeshBasicMaterial({map:engraving,transparent:true,depthWrite:false}),front,[-.1,.252,.275]);
+  engravingPlane.rotation.x=-Math.PI/2;
+
+  const paddlePivot = new THREE.Group();paddlePivot.position.set(0,0,.15);front.add(paddlePivot);
+  paddlePivot.rotation.y=PADDLE_OFF_ANGLE;
+  const paddle=new THREE.Group();paddle.name='manual-walnut-steel-paddle';paddle.userData.action='shot';paddlePivot.add(paddle);
+  const paddleWood=mat.wood.clone();paddleWood.color.setHex(0x886448);paddleWood.roughness=.35;
+  // A projecting top grip and downturned front tab surround a continuous
+  // narrow stainless strip, as seen in the owner's close-up photograph.
+  const leverSide=new THREE.Shape();
+  leverSide.moveTo(.07,.245);leverSide.lineTo(.62,.245);
+  leverSide.quadraticCurveTo(.66,.245,.66,.205);
+  leverSide.lineTo(.66,-.34);leverSide.quadraticCurveTo(.66,-.365,.69,-.365);
+  leverSide.lineTo(.725,-.365);leverSide.quadraticCurveTo(.75,-.365,.75,-.33);
+  leverSide.lineTo(.75,.25);leverSide.quadraticCurveTo(.75,.33,.67,.33);
+  leverSide.lineTo(.07,.33);leverSide.closePath();
+  // The profile's horizontal coordinate becomes forward Z, and its extrusion
+  // becomes X, giving a real bent lever rather than rotating the whole cover.
+  for(const x of [-.119,.119]) {
+    const cheek=woodProfile(leverSide,.1,[x,0,0],paddleWood,paddle,'walnut-paddle-cheek');
+    cheek.rotation.y=-Math.PI/2;
   }
+  const inlay=woodProfile(leverSide,.025,[0,0,0],mat.brushed,paddle,'continuous-stainless-paddle-inlay');
+  inlay.rotation.y=-Math.PI/2;
+  cylinder(.06,.16,[0,.17,.085],mat.steel,paddlePivot);
   for (const [y, material] of [[0.15, mat.red], [-0.12, mat.blue]]) {
     cylinder(0.062, 0.016, [-0.89, y, 0.091], mat.chrome, front, 'z');
     mesh(new THREE.SphereGeometry(0.043, 16, 10), material, front, [-0.89, y, 0.105]);
@@ -422,7 +442,7 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
   function animateReplay(snapshot,dt,time) {
     const visible=snapshot.status!=='idle';
     replayCup.visible=visible;
-    const opening=snapshot.pumpOn ? .46 : 0;
+    const opening=paddleAngle(snapshot.paddleOn);
     paddlePivot.rotation.y=reduced.matches?opening:THREE.MathUtils.lerp(paddlePivot.rotation.y,opening,1-Math.exp(-dt*13));
     pump.position.copy(pumpBase);
     if(snapshot.pumpOn&&!reduced.matches)pump.position.x+=Math.sin(snapshot.elapsed*90)*.007;
@@ -479,7 +499,7 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
     const replayState=replay.advance(elapsedSeconds);
     animateReplay(replayState,dt,time);
     controls.update(dt);hotspots();renderer.render(scene,camera);
-    if(moving||dragging||controls.autoRotate||replayState.active||Math.abs(paddlePivot.rotation.y-(replayState.pumpOn ? .46 : 0))>.001||damping-->0)request();
+    if(moving||dragging||controls.autoRotate||replayState.active||Math.abs(paddlePivot.rotation.y-paddleAngle(replayState.paddleOn))>.001||damping-->0)request();
   }
   controls.addEventListener('change',request);
   controls.addEventListener('start',()=>{dragging=true;request();});
@@ -526,7 +546,7 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
     if(value!=='exploded'&&wasExploded)offset.divideScalar(1.2);
     state.mode=value;
     document.querySelectorAll('[data-mode]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.mode===value)));
-    document.getElementById('model-hint').textContent=value==='assembled'?'DRAG TO ORBIT · CLICK THE PADDLE TO REPLAY A SHOT':'INTERNAL LAYOUT IS SCHEMATIC · SELECT THE IOT GATEWAY';
+    document.getElementById('model-hint').textContent=value==='assembled'?'DRAG TO ORBIT · PADDLE RIGHT: OFF · LEFT: BREW':'INTERNAL LAYOUT IS SCHEMATIC · SELECT THE IOT GATEWAY';
     if(value==='exploded'){controls.target.set(0,2.5,0);}
     else{controls.target.set(0,2.25,.1);}
     camera.position.copy(controls.target).add(offset);
@@ -546,13 +566,15 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
   document.getElementById('model-loading').hidden=true;
   resize();
   function paddleScreenPoint() {
-    const point=paddle.localToWorld(new THREE.Vector3(-.25,.015,.15)).project(camera);
+    const point=paddle.localToWorld(new THREE.Vector3(0,-.035,.779)).project(camera);
     const rect=viewport.getBoundingClientRect();
     return {x:rect.left+(point.x+1)*rect.width/2,y:rect.top+(1-point.y)*rect.height/2};
   }
   return {
     mode,resize,
-    toggleReplay(shot){const snapshot=replay.toggle(shot);lastTime=0;onReplayUpdate?.(snapshot);request();return snapshot;},
+    startReplay(shot){paddlePivot.rotation.y=PADDLE_OFF_ANGLE;const snapshot=replay.start(shot);lastTime=0;onReplayUpdate?.(snapshot);request();return snapshot;},
+    toggleReplay(shot){const previous=replay.snapshot();if(['idle','complete'].includes(previous.status)||previous.shotTime!==shot.time)paddlePivot.rotation.y=PADDLE_OFF_ANGLE;const snapshot=replay.toggle(shot);lastTime=0;onReplayUpdate?.(snapshot);request();return snapshot;},
+    releasePaddle(){const snapshot=replay.releasePaddle();onReplayUpdate?.(snapshot);request();},
     resetReplay(){const snapshot=replay.reset();onReplayUpdate?.(snapshot);request();},
     pauseReplay(){const snapshot=replay.pause();onReplayUpdate?.(snapshot);request();},
     setReplaySpeed(value){replay.setSpeed(value);onReplayUpdate?.(replay.snapshot());},

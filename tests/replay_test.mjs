@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ShotReplay } from '../web/shot-replay.mjs';
+import { paddleAngle, PADDLE_OFF_ANGLE } from '../web/paddle-kinematics.mjs';
 
 const shot = { time: 1000, extraction_seconds: 28.9, dose_value: 36 };
 
@@ -60,4 +61,37 @@ test('invalid or unavailable measurements cannot produce fabricated replays', ()
   assert.equal(replay.advance(-1).elapsed, 0);
   assert.equal(replay.advance(Infinity).elapsed, 0);
   assert.throws(() => replay.setSpeed(10));
+});
+
+test('paddle rests on the operator right and moves left to brew', () => {
+  assert.ok(Math.sin(paddleAngle(false)) > 0);
+  assert.ok(Math.sin(paddleAngle(true)) < 0);
+  assert.equal(paddleAngle(false), PADDLE_OFF_ANGLE);
+});
+
+test('brew-by-weight stops water without returning the manual lever', () => {
+  const replay = new ShotReplay();
+  replay.start({ ...shot, dose_mode: 'MassType' });
+  let state = replay.advance(40);
+  assert.equal(state.status, 'complete');
+  assert.equal(state.pumpOn, false);
+  assert.equal(state.paddleOn, true);
+  assert.match(state.phase, /return paddle right/);
+  state = replay.releasePaddle();
+  assert.equal(state.paddleOn, false);
+  assert.equal(state.yield, 36);
+});
+
+test('returning the paddle early stops flow and retains the partial replay', () => {
+  const replay = new ShotReplay();
+  replay.start({ ...shot, dose_mode: 'MassType' });
+  const partial = replay.advance(5);
+  replay.releasePaddle();
+  const stopped = replay.advance(2);
+  assert.equal(stopped.status, 'complete');
+  assert.equal(stopped.paddleOn, false);
+  assert.equal(stopped.pumpOn, false);
+  assert.equal(stopped.elapsed, 5);
+  assert.equal(stopped.yield, partial.yield);
+  assert.match(stopped.phase, /stopped early/);
 });

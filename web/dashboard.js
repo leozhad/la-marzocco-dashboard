@@ -146,15 +146,20 @@ function updateReplay(state) {
   progress.setAttribute('aria-valuenow', String(Math.round(display.progress * 100)));
   progress.querySelector('span').style.width = `${display.progress * 100}%`;
 }
-function playSelectedShot() {
+function playSelectedShot(forceStart = false) {
   const shot = (data.recent_shots || []).find(item => item.time === selectedTime);
   if (!model || !shot || !Number.isFinite(shot.extraction_seconds) || shot.extraction_seconds <= 0 ||
       !Number.isFinite(shot.dose_value) || shot.dose_value < 0) return;
   const bounds = modelDisplay.getBoundingClientRect();
   if (bounds.top < 0 || bounds.bottom > innerHeight) modelDisplay.scrollIntoView({ behavior: 'instant', block: 'start' });
-  requestAnimationFrame(() => model.toggleReplay(shot));
+  requestAnimationFrame(() => forceStart ? model.startReplay(shot) : model.toggleReplay(shot));
 }
-document.querySelectorAll('[data-replay-play]').forEach(button => button.addEventListener('click', playSelectedShot));
+function operatePaddle() {
+  if (!model) return;
+  if (model.diagnostics().replay.paddleOn) model.releasePaddle();
+  else playSelectedShot(true);
+}
+document.querySelectorAll('[data-replay-play]').forEach(button => button.addEventListener('click', () => playSelectedShot()));
 document.getElementById('reset-shot').addEventListener('click', () => model?.resetReplay());
 document.getElementById('replay-speed').addEventListener('change', event => model?.setReplaySpeed(Number(event.target.value)));
 
@@ -165,7 +170,7 @@ function component(name) {
     boiler: ['01 / Integrated brew group',
       `Target ${number(status.coffee_boiler_temp)}°F · ${status.coffee_boiler_ready ? 'Ready' : 'Not ready'}. The V1.5 parts catalog specifies a 0.17 L integrated brew boiler and a separate 3 L steam boiler.`],
     group: ['02 / Brew-by-weight',
-      `Dose A: ${number(brew.dose_1)}g · Dose B: ${number(brew.dose_2)}g · ${brew.dose_mode || 'Mode not reported'}. These are beverage yield presets, not dry coffee dose.`],
+      `Paddle right: off. Move left to brew. Dose A: ${number(brew.dose_1)}g · Dose B: ${number(brew.dose_2)}g. Brew-by-weight stops flow at the target; return the manual paddle right afterward.`],
     scale: ['03 / La Marzocco Connected Scale',
       `Made with Acaia · Recessed into your drip tray · ${status.scale_connected ? 'Connected' : 'Disconnected'} · ${number(status.scale_battery)}% battery. ${status.scale_calibration_required ? 'Calibration required.' : 'No calibration requested.'} Completed-shot weights appear in the brew log.`],
     iot: ['04 / ESP32 connectivity gateway',
@@ -326,7 +331,7 @@ setInterval(() => { if (!document.hidden) freshness(); }, 15000);
 render();
 import('./machine.js').then(({createMachine}) => {
   model = createMachine(document.getElementById('machine-viewport'), component, {
-    onShotRequest: playSelectedShot, onReplayUpdate: updateReplay,
+    onShotRequest: operatePaddle, onReplayUpdate: updateReplay,
   });
   model.update(data);
   model.setReplaySpeed(Number(document.getElementById('replay-speed').value));
