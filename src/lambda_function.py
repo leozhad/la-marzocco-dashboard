@@ -12,17 +12,118 @@ import boto3
 import logging
 import os
 import hashlib
+import math
+from copy import deepcopy
 from datetime import datetime, timezone
+from http import HTTPMethod
+from importlib.metadata import version
 from typing import Dict, Any
+from zoneinfo import ZoneInfo
 import asyncio
 from jinja2 import Template
 
 # Import the La Marzocco client
 from pylamarzocco import LaMarzoccoCloudClient
+from pylamarzocco.const import CUSTOMER_APP_URL, WidgetType
+from pylamarzocco.models import ThingStatistics
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+
+class DashboardCloudClient(LaMarzoccoCloudClient):
+    """Keep fields omitted by pylamarzocco's statistics models."""
+
+    async def get_thing_statistics(self, serial_number: str) -> ThingStatistics:
+        # Match the pinned client's endpoint and authenticated request handling.
+        # Its typed models omit shot doseValue/targetTemperature and daily flushes.
+        payload = await self._rest_api_call(
+            url=f"{CUSTOMER_APP_URL}/things/{serial_number}/stats",
+            method=HTTPMethod.GET,
+        )
+        self.statistics_payload = deepcopy(payload)
+        return ThingStatistics.from_dict(payload)
+
+
+def extract_statistics(statistics: ThingStatistics, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Combine typed lifetime counters with raw shot weights and daily activity."""
+    counter = statistics.widgets.get(WidgetType.COFFEE_AND_FLUSH_COUNTER)
+    if counter is None:
+        raise ValueError("Lifetime coffee and flush counters are missing")
+
+    raw_widgets = {
+        widget["code"]: widget.get("output", {})
+        for widget in payload.get("selectedWidgets", [])
+    }
+    raw_shots = {
+        shot["time"]: shot
+        for shot in raw_widgets.get("LAST_COFFEE", {}).get("lastCoffees", [])
+    }
+    recent_shots = []
+    last_coffee = statistics.widgets.get(WidgetType.LAST_COFFEE)
+    if last_coffee:
+        for shot in sorted(last_coffee.last_coffees, key=lambda item: item.time, reverse=True):
+            timestamp = round(shot.time.timestamp() * 1000)
+            raw_shot = raw_shots.get(timestamp, {})
+            dose = raw_shot.get("doseValue")
+            if (
+                isinstance(dose, bool)
+                or not isinstance(dose, (int, float))
+                or not math.isfinite(dose)
+            ):
+                continue
+            target = raw_shot.get("targetTemperature")
+            recent_shots.append({
+                "time": timestamp,
+                "extraction_seconds": round(shot.extraction_seconds, 1),
+                "dose_value": round(dose, 1),
+                "dose_mode": str(shot.dose_mode),
+                "dose_index": str(shot.dose_index),
+                "target_temperature_f": (
+                    round(target * 9 / 5 + 32, 1)
+                    if isinstance(target, (int, float)) and math.isfinite(target)
+                    else None
+                ),
+            })
+            if len(recent_shots) == 5:
+                break
+
+    usage_trend = None
+    trend = raw_widgets.get("COFFEE_AND_FLUSH_TREND")
+    if trend:
+        zone = ZoneInfo(trend["timezone"])
+        daily = {}
+        for source, field in [("coffees", "shots"), ("flushes", "flushes")]:
+            for event in trend.get(source, []):
+                local_date = datetime.fromtimestamp(
+                    event["timestamp"] / 1000, tz=zone
+                ).date()
+                date = local_date.isoformat()
+                day = daily.setdefault(date, {
+                    "date": date,
+                    "label": local_date.strftime("%a %b %d"),
+                    "shots": 0,
+                    "flushes": 0,
+                })
+                day[field] += event["value"]
+        days = sorted(daily.values(), key=lambda day: day["date"])
+        if days:
+            usage_trend = {
+                "days": trend["days"],
+                "timezone": trend["timezone"],
+                "daily": days,
+                "total_shots": sum(day["shots"] for day in days),
+                "total_flushes": sum(day["flushes"] for day in days),
+            }
+
+    return {
+        "total_shots": counter.total_coffee,
+        "total_flushes": counter.total_flush,
+        "recent_shots": recent_shots,
+        "usage_trend": usage_trend,
+    }
+
 
 class LaMarzoccoDashboard:
     def __init__(self):
@@ -155,16 +256,14 @@ class LaMarzoccoDashboard:
         
         try:
             # Import required modules for new auth
-            from pylamarzocco import LaMarzoccoCloudClient, LaMarzoccoMachine
-            from pylamarzocco.util import InstallationKey, generate_installation_key
+            from pylamarzocco import LaMarzoccoMachine
             from aiohttp import ClientSession
-            import uuid
             
             # Get or generate installation key
             installation_key = await self.get_or_create_installation_key()
             
             async with ClientSession() as session:
-                client = LaMarzoccoCloudClient(
+                client = DashboardCloudClient(
                     username=credentials['username'],
                     password=credentials['password'],
                     installation_key=installation_key,
@@ -200,142 +299,13 @@ class LaMarzoccoDashboard:
                 await machine.get_settings() 
                 await machine.get_schedule()
                 
-                # Try to get statistics with error handling for parsing issues
-                recent_shots = []
-                total_shots = 0
-                total_flushes = 0
-                
-                try:
-                    await machine.get_statistics()
-                    # If successful, extract data normally
-                    if hasattr(machine.statistics, 'selected_widgets'):
-                        for widget in machine.statistics.selected_widgets:
-                            if hasattr(widget, 'output'):
-                                if hasattr(widget.output, 'lastCoffees'):
-                                    shots = widget.output.lastCoffees[:5]
-                                    for shot in shots:
-                                        recent_shots.append({
-                                            'time': shot.time,
-                                            'extraction_seconds': round(shot.extractionSeconds, 1),
-                                            'dose_value': round(shot.doseValue, 1),
-                                            'dose_mode': str(shot.doseMode),
-                                            'dose_index': str(shot.doseIndex)
-                                        })
-                                elif hasattr(widget.output, 'coffees') and hasattr(widget.output, 'flushes'):
-                                    # COFFEE_AND_FLUSH_TREND widget
-                                    total_shots = sum(day.value for day in widget.output.coffees)
-                                    total_flushes = sum(day.value for day in widget.output.flushes)
-                    logger.info(f"Successfully parsed statistics: {len(recent_shots)} shots, {total_shots} total")
-                    
-                except Exception as stats_error:
-                    logger.warning(f"Statistics parsing failed, extracting from error: {stats_error}")
-                    
-                    # Extract data from the exception message (contains the actual data)
-                    error_str = str(stats_error)
-                    if 'lastCoffees' in error_str or 'COFFEE_AND_FLUSH_COUNTER' in error_str:
-                        try:
-                            import re
-                            import json as json_module
-                            
-                            # Extract the entire selected_widgets array from error message
-                            # Look for the array that starts with [{'code': and ends before the final ]
-                            widgets_pattern = r"has invalid value (\[\{.*?\}\])\s*$"
-                            widgets_match = re.search(widgets_pattern, error_str, re.DOTALL)
-                            
-                            if widgets_match:
-                                raw_widgets = widgets_match.group(1)
-                                # Clean up the data format
-                                json_data = raw_widgets.replace("'", '"').replace('None', 'null').replace('True', 'true').replace('False', 'false')
-                                widgets_data = json_module.loads(json_data)
-                                
-                                logger.info(f"Extracted {len(widgets_data)} widgets from error message")
-                                
-                                # Process each widget
-                                for widget in widgets_data:
-                                    widget_code = widget.get('code', '')
-                                    output = widget.get('output', {})
-                                    
-                                    # Extract recent shots from LAST_COFFEE widget
-                                    if widget_code == 'LAST_COFFEE' and 'lastCoffees' in output:
-                                        # Iterate through all shots to find 5 with dose data
-                                        all_shots = output['lastCoffees']
-                                        shots_with_dose = []
-                                        
-                                        for shot in all_shots:
-                                            if shot.get('doseValue') is not None:  # Only include shots with dose data
-                                                shots_with_dose.append({
-                                                    'time': shot.get('time', 0),
-                                                    'extraction_seconds': round(shot.get('extractionSeconds', 0), 1),
-                                                    'dose_value': round(shot.get('doseValue', 0), 1),
-                                                    'dose_mode': shot.get('doseMode', 'Unknown'),
-                                                    'dose_index': shot.get('doseIndex', '')
-                                                })
-                                                # Stop once we have 5 shots with dose data
-                                                if len(shots_with_dose) >= 5:
-                                                    break
-                                        
-                                        recent_shots = shots_with_dose
-                                        logger.info(f"Extracted {len(recent_shots)} recent shots with dose data from LAST_COFFEE widget (from {len(all_shots)} total shots)")
-                                    
-                                    # Extract lifetime totals from COFFEE_AND_FLUSH_COUNTER widget
-                                    elif widget_code == 'COFFEE_AND_FLUSH_COUNTER':
-                                        total_shots = output.get('totalCoffee', 0)
-                                        total_flushes = output.get('totalFlush', 0)
-                                        logger.info(f"Extracted lifetime totals from COUNTER widget: {total_shots} shots, {total_flushes} flushes")
-                                    
-                                    # Fallback: extract from COFFEE_AND_FLUSH_TREND widget (7-day totals)
-                                    elif widget_code == 'COFFEE_AND_FLUSH_TREND' and total_shots == 0:
-                                        coffees_data = output.get('coffees', [])
-                                        flushes_data = output.get('flushes', [])
-                                        total_shots = sum(day.get('value', 0) for day in coffees_data)
-                                        total_flushes = sum(day.get('value', 0) for day in flushes_data)
-                                        logger.info(f"Extracted 7-day totals from TREND widget: {total_shots} shots, {total_flushes} flushes")
-                                
-                        except Exception as parse_error:
-                            logger.warning(f"Failed to parse shot data from error: {parse_error}")
-                    
-                    # Fallback: try raw API if exception extraction fails
-                    if not recent_shots:
-                        try:
-                            url = f"https://gw-lmz.lamarzocco.io/v1/things/{machine_serial}/statistics"
-                            headers = {"Authorization": f"Bearer {await client.async_get_access_token()}"}
-                            
-                            async with client._client.get(url, headers=headers) as response:
-                                if response.status == 200:
-                                    raw_stats = await response.json()
-                                    logger.info("Got raw statistics data, extracting manually...")
-                                    
-                                    # Extract data manually from raw response
-                                    for widget in raw_stats.get('selected_widgets', []):
-                                        if widget.get('code') == 'LAST_COFFEE' and 'output' in widget:
-                                            if 'lastCoffees' in widget['output']:
-                                                raw_shots = widget['output']['lastCoffees'][:5]
-                                                for shot in raw_shots:
-                                                    recent_shots.append({
-                                                        'time': shot.get('time', 0),
-                                                        'extraction_seconds': round(shot.get('extractionSeconds', 0), 1),
-                                                        'dose_value': round(shot.get('doseValue', 0), 1),
-                                                        'dose_mode': shot.get('doseMode', 'Unknown'),
-                                                        'dose_index': shot.get('doseIndex', '')
-                                                    })
-                                                logger.info(f"Extracted {len(recent_shots)} recent shots from raw data")
-                                        
-                                        elif widget.get('code') == 'COFFEE_AND_FLUSH_TREND' and 'output' in widget:
-                                            output = widget['output']
-                                            if 'coffees' in output and 'flushes' in output:
-                                                total_shots = sum(day.get('value', 0) for day in output['coffees'])
-                                                total_flushes = sum(day.get('value', 0) for day in output['flushes'])
-                                                logger.info(f"Extracted totals from trend: {total_shots} shots, {total_flushes} flushes")
-                                else:
-                                    logger.warning(f"Raw statistics API returned {response.status}")
-                        except Exception as raw_error:
-                            logger.warning(f"Raw statistics extraction also failed: {raw_error}")
-                            # Use fallback data
-                            recent_shots = [
-                                {'time': 1751755324037, 'extraction_seconds': 31.1, 'dose_value': 20.3, 'dose_mode': 'MassType', 'dose_index': 'DoseA'},
-                                {'time': 1751754202546, 'extraction_seconds': 32.2, 'dose_value': 20.3, 'dose_mode': 'MassType', 'dose_index': 'DoseA'},
-                            ]
-                
+                await machine.get_statistics()
+                stats = extract_statistics(machine.statistics, client.statistics_payload)
+                logger.info(
+                    "Collected statistics: %s lifetime shots, %s lifetime flushes, %s recent shots",
+                    stats["total_shots"], stats["total_flushes"], len(stats["recent_shots"]),
+                )
+
                 # Extract data from machine object
                 machine_dict = machine.to_dict()
                 logger.info(f"Machine data keys: {list(machine_dict.keys())}")
@@ -375,6 +345,8 @@ class LaMarzoccoDashboard:
                 # Get settings and schedule data
                 settings_data = machine_dict.get('settings', {})
                 schedule_data = machine_dict.get('schedule', {})
+                standby = schedule_data.get('smart_stand_by') or {}
+                legacy_standby = schedule_data.get('smart_wake_up_sleep') or {}
                 
                 # Build comprehensive machine data from new API structure
                 machine_data = {
@@ -401,8 +373,8 @@ class LaMarzoccoDashboard:
                         'scale_calibration_required': scale.get('calibration_required', False) if scale else False,
                     },
                     'statistics': {
-                        'total_shots': total_shots,
-                        'total_flushes': total_flushes,
+                        'total_shots': stats['total_shots'],
+                        'total_flushes': stats['total_flushes'],
                         'last_cleaning': back_flush.get('last_cleaning_start_time') if back_flush else None,
                     },
                     'brewing': {
@@ -413,92 +385,43 @@ class LaMarzoccoDashboard:
                         'dose_2': dose_settings.get('doses', {}).get('dose_2', {}).get('dose', 30.0) if dose_settings else 30.0,
                         'dose_range': f"{dose_settings.get('doses', {}).get('dose_1', {}).get('dose_min', 5)}-{dose_settings.get('doses', {}).get('dose_1', {}).get('dose_max', 100)}g" if dose_settings else "5-100g",
                     },
-                    'recent_shots': recent_shots,
+                    'recent_shots': stats['recent_shots'],
+                    'usage_trend': stats['usage_trend'],
                     'settings': {
                         'wifi_ssid': settings_data.get('wifi_ssid'),
                         'wifi_signal': settings_data.get('wifi_rssi'),
                         'plumbed_in': settings_data.get('is_plumbed_in'),
                         'auto_update': settings_data.get('auto_update'),
-                        'smart_standby_enabled': schedule_data.get('smart_wake_up_sleep', {}).get('smart_stand_by_enabled'),
-                        'smart_standby_minutes': schedule_data.get('smart_wake_up_sleep', {}).get('smart_stand_by_minutes'),
+                        'smart_standby_enabled': standby.get('enabled', legacy_standby.get('smart_stand_by_enabled')),
+                        'smart_standby_minutes': standby.get('minutes', legacy_standby.get('smart_stand_by_minutes')),
                     },
                     'maintenance': {
                         'cleaning_status': back_flush.get('status', 'Unknown').title() if back_flush else 'Unknown',
                         'last_cleaning_date': back_flush.get('last_cleaning_start_time', '').split('T')[0] if back_flush and back_flush.get('last_cleaning_start_time') else None,
                         'firmware_update_required': machine_thing.require_firmware_update,
                         'firmware_update_available': machine_thing.available_firmware_update,
+                        'firmware_notes': [
+                            {
+                                'name': name,
+                                'version': firmware.get('build_version', ''),
+                                'notes': firmware['change_log'],
+                            }
+                            for name, firmware in settings_data.get('firmwares', {}).items()
+                            if firmware.get('change_log')
+                        ],
                     },
                     'timestamp': datetime.now(timezone.utc).isoformat(),
                     'collection_method': 'La Marzocco Cloud API',
-                    'client_version': 'pylamarzocco'
+                    'client_version': version('pylamarzocco')
                 }
                 
                 return machine_data
             
         except Exception as e:
             logger.error(f"Error collecting machine data: {e}")
-            # Return fallback data with error info
-            return {
-                'machine_info': {
-                    'name': 'Espresso Replicator',
-                    'model': 'Linea Mini',
-                    'serial_number': 'LM016332',
-                    'firmware_version': 'Unknown',
-                },
-                'status': {
-                    'power_on': True,
-                    'mode': 'BREWING_MODE',
-                    'coffee_boiler_temp': 94.2,
-                    'coffee_boiler_ready': True,
-                    'scale_connected': False,
-                    'scale_battery': 83,
-                },
-                'statistics': {
-                    'total_shots': 5051,
-                    'total_flushes': 1837,
-                    'last_cleaning': '2025-05-26T22:35:35.308000+00:00',
-                },
-                'settings': {
-                    'wifi_ssid': 'UniversalExports',
-                    'wifi_signal': -46,
-                    'plumbed_in': True,
-                    'auto_update': True,
-                    'smart_standby_enabled': False,
-                    'smart_standby_minutes': 10,
-                },
-                'maintenance': {
-                    'cleaning_status': 'OFF',
-                    'last_cleaning_date': '2025-05-26',
-                    'firmware_update_required': False,
-                    'firmware_update_available': False,
-                },
-                'brewing': {
-                    'pre_brewing_mode': 'Disabled',
-                    'pre_brewing_available': ['PreBrewing', 'PreInfusion', 'Disabled'],
-                    'dose_mode': 'Continuous',
-                    'dose_1': 20.0,
-                    'dose_2': 30.0,
-                    'dose_range': '5-100g',
-                },
-                'recent_shots': [
-                    {'time': 1751755324037, 'extractionSeconds': 31.12, 'doseValue': 20.3, 'doseMode': 'MassType'},
-                    {'time': 1751754202546, 'extractionSeconds': 32.22, 'doseValue': 20.3, 'doseMode': 'MassType'},
-                    {'time': 1751661595418, 'extractionSeconds': 27.52, 'doseValue': 20.0, 'doseMode': 'MassType'},
-                    {'time': 1751660968837, 'extractionSeconds': 30.97, 'doseValue': 20.4, 'doseMode': 'MassType'},
-                    {'time': 1751575921702, 'extractionSeconds': 28.31, 'doseValue': 20.4, 'doseMode': 'MassType'}
-                ],
-                'scale': {
-                    'name': 'LMZ-59BD90',
-                    'connected': False,
-                    'battery_level': 83,
-                    'model': 'Acaia Lunar',
-                },
-                'timestamp': datetime.now(timezone.utc).isoformat(),
-                'collection_method': 'Fallback Data (API Error)',
-                'client_version': 'pylamarzocco',
-                'error': str(e)
-            }
-    
+            # Let run() report the failure without overwriting the last good S3 data.
+            raise
+
     def _parse_power_status(self, machine_status):
         """Parse machine power status from API response"""
         if not machine_status:
@@ -1090,6 +1013,47 @@ class LaMarzoccoDashboard:
             }
         }
         
+        .activity-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 14px;
+        }
+
+        .activity-table th, .activity-table td {
+            padding: 8px 4px;
+            text-align: right;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .activity-table th:first-child, .activity-table td:first-child {
+            text-align: left;
+        }
+
+        .activity-table caption {
+            caption-side: bottom;
+            color: #b0b0b0;
+            font-size: 12px;
+            padding-top: 12px;
+            overflow-wrap: anywhere;
+        }
+
+        .firmware-notes {
+            margin-top: 16px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .firmware-notes summary {
+            cursor: pointer;
+            color: #d4af37;
+        }
+
+        .firmware-notes p {
+            white-space: pre-line;
+            overflow-wrap: anywhere;
+            margin-top: 10px;
+        }
+
         /* Touch-friendly improvements */
         @media (hover: none) and (pointer: coarse) {
             .card {
@@ -1153,7 +1117,7 @@ class LaMarzoccoDashboard:
                 {% endif %}
                 {% if status.coffee_boiler_temp %}
                 <div class="stat-row">
-                    <span class="stat-label">Coffee Boiler</span>
+                    <span class="stat-label">Coffee Boiler Target</span>
                     <span class="stat-value temperature">
                         {{ "%.1f"|format(status.coffee_boiler_temp) }}°F {% if status.coffee_boiler_ready %}✓{% endif %}
                         {% if status.coffee_boiler_range %}<br><small>Range: {{ status.coffee_boiler_range }}</small>{% endif %}
@@ -1210,6 +1174,34 @@ class LaMarzoccoDashboard:
                 {% endif %}
             </div>
             
+            {% if usage_trend %}
+            <div class="card">
+                <h3>📅 Past {{ usage_trend.days }} Days</h3>
+                <div class="stat-row">
+                    <span class="stat-label">Shots</span>
+                    <span class="stat-value count">{{ usage_trend.total_shots }}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Flushes</span>
+                    <span class="stat-value count">{{ usage_trend.total_flushes }}</span>
+                </div>
+                <table class="activity-table">
+                    <caption>Daily activity · {{ usage_trend.timezone|e }}</caption>
+                    <thead>
+                        <tr><th scope="col">Day</th><th scope="col">Shots</th><th scope="col">Flushes</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for day in usage_trend.daily %}
+                        <tr>
+                            <th scope="row"><time datetime="{{ day.date|e }}">{{ day.label|e }}</time></th>
+                            <td>{{ day.shots }}</td><td>{{ day.flushes }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
             <!-- Machine Settings Card -->
             <div class="card">
                 <h3>⚙️ Settings & Network</h3>
@@ -1286,7 +1278,7 @@ class LaMarzoccoDashboard:
             {% if recent_shots %}
             <div class="card">
                 <h3>🎯 Recent Shots</h3>
-                {% for shot in recent_shots[:3] %}
+                {% for shot in recent_shots[:5] %}
                 <div class="stat-row">
                     <span class="stat-label">
                         Shot {{ loop.index }}
@@ -1301,17 +1293,21 @@ class LaMarzoccoDashboard:
                         {% else %}
                             N/A
                         {% endif %}
+                        {% if shot.target_temperature_f is defined and shot.target_temperature_f is not none %}
+                        <br><small>Brew target {{ shot.target_temperature_f }}°F</small>
+                        {% endif %}
                     </span>
                 </div>
                 {% endfor %}
-                {% if recent_shots|length > 3 %}
+                {% if recent_shots|length > 1 %}
                 <div class="stat-row">
-                    <span class="stat-label">Average (Last 5)</span>
+                    {% set shot_count = recent_shots[:5]|length %}
+                    <span class="stat-label">Average (Last {{ shot_count }})</span>
                     <span class="stat-value">
-                        {{ "%.1f"|format(recent_shots[:5]|map(attribute='extraction_seconds')|sum / 5) }}s • 
-                        {{ "%.1f"|format(recent_shots[:5]|map(attribute='dose_value')|sum / 5) }}g •
-                        {% set avg_time = recent_shots[:5]|map(attribute='extraction_seconds')|sum / 5 %}
-                        {% set avg_dose = recent_shots[:5]|map(attribute='dose_value')|sum / 5 %}
+                        {{ "%.1f"|format(recent_shots[:5]|map(attribute='extraction_seconds')|sum / shot_count) }}s •
+                        {{ "%.1f"|format(recent_shots[:5]|map(attribute='dose_value')|sum / shot_count) }}g •
+                        {% set avg_time = recent_shots[:5]|map(attribute='extraction_seconds')|sum / shot_count %}
+                        {% set avg_dose = recent_shots[:5]|map(attribute='dose_value')|sum / shot_count %}
                         {% if avg_dose > 0 %}
                             {{ "%.1f"|format(avg_time / avg_dose) }}s/g
                         {% else %}
@@ -1390,6 +1386,12 @@ class LaMarzoccoDashboard:
                     <span class="stat-value">{{ machine_info.firmware_version }}</span>
                 </div>
                 {% endif %}
+                {% for firmware in maintenance.firmware_notes %}
+                <details class="firmware-notes">
+                    <summary>{{ firmware.name|e }} {{ firmware.version|e }} release notes</summary>
+                    <p>{{ firmware.notes|e }}</p>
+                </details>
+                {% endfor %}
             </div>
         </div>
         
@@ -1409,7 +1411,7 @@ class LaMarzoccoDashboard:
         </div>
         
         <div class="footer">
-            <p>La Marzocco Dashboard • Powered by <a href="https://aws.amazon.com/lambda/" target="_blank" style="color: #4a9eff; text-decoration: none;">AWS Lambda</a> & <a href="https://github.com/zweckj/pylamarzocco" target="_blank" style="color: #4a9eff; text-decoration: none;">{{ client_version }}</a></p>
+            <p>La Marzocco Dashboard • Powered by <a href="https://aws.amazon.com/lambda/" target="_blank" style="color: #4a9eff; text-decoration: none;">AWS Lambda</a> & <a href="https://github.com/zweckj/pylamarzocco" target="_blank" style="color: #4a9eff; text-decoration: none;">pylamarzocco {{ client_version }}</a></p>
             <p style="margin-top: 5px; font-size: 0.9em; color: #888;">
                 Created by <a href="https://github.com/leozhad/la-marzocco-dashboard" target="_blank" style="color: #4a9eff; text-decoration: none;">Leo Zhadanovsky</a>
             </p>

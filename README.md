@@ -8,6 +8,9 @@ A serverless web dashboard for monitoring your La Marzocco espresso machine, bui
 
 - **Real-time machine status** (power, temperature, water level)
 - **Usage statistics** (total shots, flushes, last activity)
+- **Seven-day activity** with daily shot and flush counts in the machine's timezone
+- **Five recent shots** with extraction time, weight, and brew-temperature target
+- **Installed firmware release notes** for the gateway and machine
 - **Machine settings** (auto on/off, dosing preferences)
 - **Maintenance alerts** (descaling, cleaning needed)
 - **Beautiful dark theme** optimized for coffee shops
@@ -62,7 +65,15 @@ The project uses GitOps for deployment:
 4. **Domain**: Route53 hosted zone for your domain
 5. **Tools**: AWS CLI, Python 3.11+, jq (for JSON parsing)
 
-**Note**: Uses pylamarzocco 2.1.0+ with new installation key authentication system.
+**Note**: Uses pinned `pylamarzocco==2.4.3` on Python 3.12 with installation key authentication. The dashboard preserves raw shot weights and daily flush counts that the client's typed statistics models omit.
+
+### Recent Updates (v2.4.0)
+
+- Updated the machine client to 2.4.3 and pinned it to keep builds reproducible.
+- Replaced exception-text parsing with typed lifetime counters and preserved raw shot details.
+- Added seven-day activity, per-shot temperature targets, and installed firmware release notes.
+- Corrected smart standby settings and averages for fewer than five recent shots.
+- Collection errors leave the last successfully published dashboard intact.
 
 ### Recent Updates (v2.3.0)
 
@@ -480,6 +491,18 @@ aws logs filter-log-events \
 ## Development
 
 ### Local Testing
+
+Run the offline regression suite using Python 3.12:
+
+```bash
+python -m pip install -r requirements.txt
+python -m unittest discover -s tests -p '*_test.py' -v
+```
+
+These tests mock cloud access and cover client parsing, lifetime counters, shot weights, daily timezone grouping, rendering, and failure handling.
+
+The Lambda handler is the publishing entry point. With AWS credentials and the following environment variables, it reads the machine API and updates the configured S3 website:
+
 ```bash
 # Install dependencies
 pip install -r requirements.txt
@@ -489,8 +512,8 @@ export S3_BUCKET_NAME=your-bucket
 export LAMARZOCCO_SECRET_NAME=your-secret
 export CLOUDFRONT_DISTRIBUTION_ID=your-distribution
 
-# Test function locally
-python src/lambda_function.py
+# Run an update against the configured AWS resources
+PYTHONPATH=src python -c 'from lambda_function import lambda_handler; print(lambda_handler({}, None))'
 ```
 
 ### GitOps Workflow

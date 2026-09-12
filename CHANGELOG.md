@@ -5,6 +5,24 @@ All notable changes to the La Marzocco Dashboard project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-09-11
+
+### Added
+- Seven-day activity totals and a daily shot/flush table in the machine's timezone.
+- Brew-temperature targets for recent shots and expandable installed firmware release notes.
+- Offline regression tests for statistics extraction, rendering, and publication failure handling.
+
+### Changed
+- Pin the Python machine client to `pylamarzocco==2.4.3`.
+- Use typed lifetime counters while preserving raw shot weights and daily flush counts.
+- Show all five recent shots and calculate averages using the actual number of available shots.
+
+### Fixed
+- Remove exception-text statistics parsing and hardcoded sample-data fallbacks.
+- Preserve the last published dashboard if data collection fails.
+- Read the current smart standby configuration from the client's updated schedule model.
+- Label the coffee boiler temperature as a target, matching the API field.
+
 ## [2.3.1] - 2025-10-31
 
 ### Fixed
