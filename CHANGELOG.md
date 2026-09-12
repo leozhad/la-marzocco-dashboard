@@ -5,6 +5,23 @@ All notable changes to the La Marzocco Dashboard project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-09-11
+
+### Added
+- Selected-shot replay from the 3D paddle or playback controls: paddle motion, pump/flow highlights, cup filling, simulated scale readout, and drain sequence.
+- Full 3D Look Inside view with shared renderer, playback controls, and an ESP32 gateway/controller assembly.
+- Gateway hardware/firmware fields from the machine's reported connectivity data.
+- Espresso brew ratios using an explicit recipe default or per-shot dry coffee dose; dose preferences are stored on the viewer's device.
+- Unit tests for replay timing, recorded endpoints, and ratio calculations.
+
+### Fixed
+- White lower side and rear panels matching the owner's finish.
+- Contoured walnut paddle and offset mounting block matching the photo more closely.
+- Recessed Connected Scale with a grille opening and adjusted cup clearance.
+
+### Changed
+- Faster Matrix rain, with elapsed-time-based movement and existing reduced-motion support.
+
 ## [3.0.0] - 2026-09-11
 
 ### Added

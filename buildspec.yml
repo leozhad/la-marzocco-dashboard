@@ -4,6 +4,7 @@ phases:
   install:
     runtime-versions:
       python: 3.12
+      nodejs: 20
     commands:
       - echo "Installing build dependencies..."
       - pip install --upgrade pip
@@ -22,6 +23,7 @@ phases:
       - cd lambda-package
       - pip install -r ../requirements.txt -t .
       - PYTHONPATH=. python -m unittest discover -s ../tests -p '*_test.py' -v
+      - node --test ../tests/*_test.mjs
       - zip -r ../lambda-deployment-package.zip .
       - cd ..
       - ls -la lambda-deployment-package.zip

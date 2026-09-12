@@ -5,13 +5,13 @@ export function createMatrix(canvas, button) {
   let draws = 0;
   try { enabled = localStorage.getItem('espresso.matrix') === 'true'; } catch {}
   const glyphs = '0123456789∴:·☕';
-  function paint(still = false) {
+  function paint(still = false, seconds = 1 / 24) {
     if (!ctx) return;
     ctx.clearRect(0, 0, width, height);
     ctx.font = '12px ui-monospace, monospace';
     for (const column of columns) {
       if (!still) {
-        column.y += column.speed;
+        column.y += column.speed * seconds;
         if (column.y - column.length * 18 > height) column.y = -Math.random() * height * .3;
       }
       for (let j = 0; j < column.length; j++) {
@@ -27,7 +27,7 @@ export function createMatrix(canvas, button) {
   function loop(time) {
     frame = 0;
     if (!enabled || document.hidden || reduced.matches) return;
-    if (time - last >= 45) { paint(); last = time; }
+    if (time - last >= 40) { paint(false, Math.min((time - last) / 1000, .1)); last = time; }
     frame = requestAnimationFrame(loop);
   }
   function resize() {
@@ -39,7 +39,7 @@ export function createMatrix(canvas, button) {
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     columns = Array.from({length:Math.ceil(width/33)},(_,i)=>{
       const length=10+Math.floor(Math.random()*13);
-      return {x:i*33+12,y:Math.random()*height,speed:.65+Math.random()*1.6,length,
+      return {x:i*33+12,y:Math.random()*height,speed:75+Math.random()*120,length,
         chars:Array.from({length},()=>glyphs[Math.floor(Math.random()*glyphs.length)])};
     });
     if(enabled)paint(true);

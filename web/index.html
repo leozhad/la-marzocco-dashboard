@@ -27,7 +27,8 @@
   <main>
     <section id="overview" class="panel" role="tabpanel" aria-labelledby="tab-overview">
       <div class="overview-grid">
-        <div class="scene">
+        <div class="scene" id="overview-model-slot">
+        <div id="machine-display" class="machine-display">
           <div class="scene-top"><span class="scene-label">THE LINEA MINI · WHITE</span><span class="pill" id="machine-state">READY TO BREW</span></div>
           <div id="machine-viewport" role="img" aria-label="Rotatable 3D model of your white Linea Mini with stainless steel and walnut details"><p id="model-loading">Loading your Linea Mini…</p></div>
           <div class="model-modes" role="group" aria-label="Machine display mode"><button data-mode="assembled" aria-pressed="true">Assembled</button><button data-mode="cutaway" aria-pressed="false">Cutaway</button><button data-mode="exploded" aria-pressed="false">Exploded</button></div>
@@ -36,7 +37,15 @@
           <button class="hotspot boiler" data-component="boiler" aria-label="Inspect the coffee boiler" aria-pressed="true"><span>1</span></button>
           <button class="hotspot group" data-component="group" aria-label="Inspect brewing configuration" aria-pressed="false"><span>2</span></button>
           <button class="hotspot scale" data-component="scale" aria-label="Inspect the connected scale" aria-pressed="false"><span>3</span></button>
-          <p class="scene-note" id="model-hint">DRAG TO ORBIT · SCROLL TO ZOOM · SELECT A COMPONENT</p>
+          <button class="hotspot iot" data-component="iot" aria-label="Inspect the ESP32 connectivity gateway" aria-pressed="false" hidden><span>4</span></button>
+          <p class="scene-note" id="model-hint">DRAG TO ORBIT · CLICK THE PADDLE TO REPLAY A SHOT</p>
+          <div class="shot-controls">
+            <div class="replay-topline"><span class="kicker">SHOT REPLAY</span><span id="replay-selected">Select a recorded shot</span><span class="replay-tag">ILLUSTRATIVE FLOW</span></div>
+            <div class="replay-actions"><button id="play-shot" class="replay-play" data-replay-play aria-pressed="false" disabled>▶ Play selected shot</button><button id="reset-shot" aria-label="Reset shot replay">↺</button><span id="replay-phase" role="status">Ready to replay</span><label for="replay-speed">Speed <select id="replay-speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div>
+            <div class="replay-progress" role="progressbar" aria-label="Shot replay progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
+            <div class="replay-readouts"><output id="replay-clock">0.0 / 0.0 s</output><span>Simulated yield <output id="replay-yield">0.0 / 0.0 g</output></span><small>Replay only · does not operate the machine</small></div>
+          </div>
+        </div>
         </div>
         <aside class="instruments" aria-label="Recorded machine readings">
           <div class="instrument-head"><span class="kicker">The essentials</span><small>01 / 03</small></div>
@@ -48,9 +57,9 @@
       <div class="lower-grid">
         <section class="block">
           <div class="section-head"><div><div class="kicker">A little closer</div><h2 id="latest-title">The latest shot</h2></div><button data-open="journal">Explore shots ↗</button></div>
-          <div class="shot-metrics"><div><strong><b class="duration" style="font-weight:400"></b><small>s</small></strong><span>Extraction time</span></div><div><strong><b class="yield" style="font-weight:400"></b><small>g</small></strong><span>Yield in cup</span></div><div><strong><b class="target" style="font-weight:400"></b><small>°F</small></strong><span>Brew target</span></div></div>
+          <div class="shot-metrics"><div><strong><b class="duration" style="font-weight:400"></b><small>s</small></strong><span>Extraction time</span></div><div><strong><b class="yield" style="font-weight:400"></b><small>g</small></strong><span>Yield in cup</span></div><div><strong><b class="target" style="font-weight:400"></b><small>°F</small></strong><span>Brew target</span></div><div><strong class="ratio">—</strong><span>Brew ratio</span></div></div>
           <div class="shot-meta"><span class="shot-date"></span><span class="shot-dose"></span></div>
-          <div class="mini-shots" aria-label="Select a recent shot"></div>
+          <div class="mini-shots" aria-label="Select a recent shot"></div><p class="ratio-note"></p><button class="dose-link" data-edit-dose>Set coffee dose for ratios ↗</button>
         </section>
         <section class="block">
           <div class="section-head"><div><div class="kicker">The daily ritual</div><h2>Seven days, in coffee</h2></div><div class="legend"><span><i></i>Shots</span><span><i class="water"></i>Flushes</span></div></div>
@@ -61,30 +70,22 @@
       <details class="utility"><summary>Machine details, maintenance & firmware</summary><div class="utility-grid"><div><div class="kicker">Lifetime activity</div><p id="lifetime"></p></div><div><div class="kicker">Care & configuration</div><p id="maintenance"></p><div id="network-details"></div></div><div><div class="kicker">Installed firmware</div><p id="firmware"></p><div id="firmware-notes"></div></div></div><p class="model-fidelity">3D exterior matched to your reference photo. Internal placement and analog gauge needles are illustrative; pressure isn’t reported by the cloud API. <a href="https://lamarzoccousa.com/wp-content/uploads/2019/04/Lineamini_Parts_Catalog_V1.5COLOR.pdf" target="_blank" rel="noopener">Parts catalog ↗</a> · <a href="https://home.lamarzoccousa.com/product/connected-scale/" target="_blank" rel="noopener">Connected Scale ↗</a></p></details>
     </section>
     <section id="journal" class="panel" role="tabpanel" aria-labelledby="tab-journal" hidden>
-      <div class="journal-layout"><section class="block"><div class="section-head"><div><div class="kicker">Recorded extractions</div><h2>Your recent extractions.</h2></div></div><table class="journal-list"><thead><tr><th scope="col">Shot</th><th scope="col">Time</th><th scope="col">Yield</th><th scope="col">Target</th></tr></thead><tbody></tbody></table><p class="journal-note">Select an extraction to compare it with the others. Time and yield describe consistency; they don’t tell us how the coffee tasted.</p></section><aside class="block"><div class="section-head"><div><div class="kicker">Selected extraction</div><h2 id="journal-title">The latest shot</h2></div></div><div class="shot-metrics"><div><strong><b class="duration" style="font-weight:400"></b><small>s</small></strong><span>Extraction</span></div><div><strong><b class="yield" style="font-weight:400"></b><small>g</small></strong><span>Yield in cup</span></div><div><strong><b class="target" style="font-weight:400"></b><small>°F</small></strong><span>Brew target</span></div></div><p class="shot-date" style="color:var(--muted);font-size:11px"></p><div class="comparison"><div class="kicker">Against these five shots</div><p id="comparison"></p></div><p class="journal-note">Yield is the beverage weight recorded by the scale. Dry coffee dose and tasting notes aren’t reported by the machine, so a brew ratio or taste score isn’t inferred.</p></aside></div>
+      <div class="journal-layout"><section class="block"><div class="section-head"><div><div class="kicker">Recorded extractions</div><h2>Your recent extractions.</h2></div></div><table class="journal-list"><thead><tr><th scope="col">Shot</th><th scope="col">Time</th><th scope="col">Yield</th><th scope="col">Ratio</th><th scope="col">Target</th></tr></thead><tbody></tbody></table><p class="journal-note">Select an extraction to compare it with the others. Time and yield describe consistency; they don’t tell us how the coffee tasted.</p></section><aside class="block"><div class="section-head"><div><div class="kicker">Selected extraction</div><h2 id="journal-title">The latest shot</h2></div></div><div class="shot-metrics"><div><strong><b class="duration" style="font-weight:400"></b><small>s</small></strong><span>Extraction</span></div><div><strong><b class="yield" style="font-weight:400"></b><small>g</small></strong><span>Yield in cup</span></div><div><strong><b class="target" style="font-weight:400"></b><small>°F</small></strong><span>Brew target</span></div><div><strong class="ratio">—</strong><span>Brew ratio</span></div></div><p class="shot-date" style="color:var(--muted);font-size:11px"></p><div class="comparison"><div class="kicker">Against these five shots</div><p id="comparison"></p></div><form id="dose-settings" class="dose-settings"><h3>Coffee dose</h3><p>Brew ratio is dry coffee in : espresso out. For example, 18g in and 36g out is 1:2.</p><label for="default-coffee-dose">Recipe default (g)<input id="default-coffee-dose" type="number" min="0.1" max="50" step="0.1" inputmode="decimal" placeholder="Enter your usual dose"></label><label for="shot-coffee-dose">This shot (g)<input id="shot-coffee-dose" type="number" min="0.1" max="50" step="0.1" inputmode="decimal" placeholder="Use recipe default"></label><div><button type="submit">Save coffee dose</button><button id="use-default-dose" type="button">Use default for this shot</button></div><p class="ratio-note" role="status"></p><small id="dose-storage-note">Saved on this device. The machine reports beverage yield, not dry coffee dose.</small><a href="https://home.lamarzoccousa.com/using-espresso-brew-ratios/" target="_blank" rel="noopener">About espresso ratios ↗</a></form></aside></div>
     </section>
     <section id="inside" class="panel" role="tabpanel" aria-labelledby="tab-inside" hidden>
-      <div class="inside-layout"><div class="circuit"><div class="kicker">From water to espresso</div>
-        <svg viewBox="0 0 680 370" role="img" aria-label="Illustrative diagram of separate brewing and steaming circuits">
-          <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 10 5 0 10z" fill="#86c4d3"/></marker></defs>
-          <path class="pipe" d="M105 180h105m80 0h75" marker-end="url(#arrow)"/><path class="pipe hot" d="M465 180h100v70m-100-70" /><path class="pipe" d="M320 180V70h45"/><path class="pipe hot" d="M465 70h115v35"/>
-          <path class="flow" d="M105 180h260m100 0h100v70M320 180V70h45m100 0h115v35"/>
-          <rect x="35" y="142" width="75" height="76" rx="6" fill="#192f34" stroke="#6ba0ad"/><path d="M45 179q12-9 23 0t25 0v29H45z" fill="#86c4d333"/><text x="73" y="241" text-anchor="middle">Water supply</text>
-          <circle cx="248" cy="180" r="37" fill="#1e3237" stroke="#86c4d3"/><path d="m234 161 30 19-30 19z" fill="#86c4d333" stroke="#86c4d3"/><text x="248" y="241" text-anchor="middle">Pump</text>
-          <rect x="365" y="142" width="100" height="76" rx="12" fill="#483831" stroke="#e3b47e"/><path d="m385 177 12-9 12 18 12-18 12 18 12-9" stroke="#e3b47e" fill="none" stroke-width="2"/><text x="415" y="241" text-anchor="middle">Brew boiler</text><text x="415" y="261" text-anchor="middle" style="fill:#a1b1b0;font-size:10px">Dedicated brew circuit</text>
-          <rect x="365" y="34" width="100" height="74" rx="12" fill="#483831" stroke="#e3b47e"/><path d="m385 69 12-9 12 18 12-18 12 18 12-9" stroke="#e3b47e" fill="none" stroke-width="2"/><text x="415" y="24" text-anchor="middle">Steam boiler</text>
-          <path d="M568 108h22m-18 5q-9 10 0 19m11-19q-9 10 0 19" stroke="#e5e9dd" fill="none" stroke-width="2"/><text x="588" y="156" text-anchor="middle">Steam wand</text>
-          <path d="M546 251h38v15h-38zm5 16v14h28v-14" fill="#758984" stroke="#d5ded0"/><text x="565" y="313" text-anchor="middle">Group → cup</text>
-        </svg>
-        <div class="mobile-circuit" aria-label="Illustrative water circuits">
-          <div class="mobile-source">Water supply → pump</div>
-          <div class="mobile-tracks">
-            <ol aria-label="Brewing circuit"><li>Brew boiler</li><li>Group</li><li>Espresso</li></ol>
-            <ol aria-label="Steam circuit"><li>Steam boiler</li><li>Steam wand</li></ol>
-          </div>
-        </div>
-        <p class="circuit-note">Educational schematic. Layout and flow are illustrative, not measured telemetry or a service diagram.</p></div>
-        <aside class="inside-aside"><div class="kicker">Inside your machine</div><h2>Two circuits.<br>One ritual.</h2><p>A dedicated brew circuit prepares the espresso. A separate steam boiler provides steam for milk.</p><p>Use the 3D cutaway to reveal the boilers, pump, and copper lines. Internal placement is schematic; the exterior follows your machine’s white, stainless steel, and walnut finish.</p><button class="action secondary-action" id="open-cutaway">Explore the 3D cutaway ↗</button><button class="action" id="flow-toggle" aria-pressed="false">Trace the water paths</button><p style="font-size:10px">This control animates the illustration. It does not operate the machine.</p></aside>
+      <div class="inside-layout">
+        <div class="scene inside-model-stage" id="inside-model-slot"></div>
+        <aside class="inside-aside">
+          <div class="kicker">Inside your machine</div><h2>Follow the shot.</h2>
+          <p>Watch the paddle open, the pump feed the integrated brew group, and espresso collect on the Connected Scale. At the end, the paddle closes and the drain valve releases.</p>
+          <div class="inside-selected"><span class="kicker">SELECTED SHOT</span><strong class="shot-date"></strong><span><b class="duration"></b>s · <b class="yield"></b>g · <b class="target"></b>°F target · <b class="ratio">—</b> ratio</span></div>
+          <button id="inside-play-shot" class="action" data-replay-play aria-pressed="false" disabled>▶ Play selected shot</button>
+          <button class="action secondary-action" id="choose-replay-shot">Choose another shot ↗</button>
+          <div class="inside-component"><strong id="inside-component-title"></strong><p id="inside-component-description"></p></div>
+          <button class="action secondary-action" id="focus-iot">Locate the IoT gateway ↗</button>
+          <p class="replay-explanation">Duration and final yield come from the selected shot. Flow, fill level, paddle motion, and internal layout are illustrative. Playback never sends commands to the machine.</p>
+          <p class="model-sources"><a href="https://home.lamarzoccousa.com/installation-guide-linea-mini-connected-machine-retrofit-kit/" target="_blank" rel="noopener">Connectivity-board reference ↗</a></p>
+        </aside>
       </div>
     </section>
   </main>

@@ -145,7 +145,7 @@ class ClientAndCollectionTests(unittest.IsolatedAsyncioTestCase):
             get_statistics=AsyncMock(), statistics=ThingStatistics.from_dict(deepcopy(payload)),
             to_dict=lambda: {
                 "dashboard": {"widgets": []},
-                "settings": {"firmwares": {"Gateway": {
+                "settings": {"coffee_station": {"coffeeMachine": {"gatewayHw": "Esp32"}}, "firmwares": {"Gateway": {
                     "build_version": "v1", "change_log": "<script>example</script>\nStandby fix"
                 }}},
                 "schedule": {
@@ -159,6 +159,8 @@ class ClientAndCollectionTests(unittest.IsolatedAsyncioTestCase):
         ):
             data = await dashboard.collect_machine_data()
         self.assertEqual(data["client_version"], "2.4.3")
+        self.assertEqual(data["connectivity"]["gateway_hardware"], "Esp32")
+        self.assertEqual(data["connectivity"]["gateway_firmware"], "v1")
         self.assertEqual(data["settings"]["smart_standby_minutes"], 10)
         self.assertTrue(data["settings"]["smart_standby_enabled"])
         self.assertEqual(data["statistics"]["total_shots"], 5664)

@@ -53,7 +53,8 @@ def frontend_bundle():
         name = relative.as_posix()
         content = path.read_bytes()
         content_type = {
-            ".js": "text/javascript", ".css": "text/css", ".txt": "text/plain"
+            ".js": "text/javascript", ".mjs": "text/javascript",
+            ".css": "text/css", ".txt": "text/plain"
         }.get(path.suffix) or mimetypes.guess_type(name)[0] or "application/octet-stream"
         hasher.update(name.encode() + b"\0" + content + b"\0")
         assets.append((name, content, content_type))
@@ -375,6 +376,8 @@ class LaMarzoccoDashboard:
                 schedule_data = machine_dict.get('schedule', {})
                 standby = schedule_data.get('smart_stand_by') or {}
                 legacy_standby = schedule_data.get('smart_wake_up_sleep') or {}
+                station = settings_data.get('coffee_station') or {}
+                connected_machine = station.get('coffeeMachine') or {}
                 
                 # Build comprehensive machine data from new API structure
                 machine_data = {
@@ -415,6 +418,11 @@ class LaMarzoccoDashboard:
                     },
                     'recent_shots': stats['recent_shots'],
                     'usage_trend': stats['usage_trend'],
+                    'connectivity': {
+                        'gateway_hardware': connected_machine.get('gatewayHw'),
+                        'gateway_firmware': settings_data.get('firmwares', {}).get('Gateway', {}).get('build_version'),
+                        'cloud_connected': machine_thing.connected,
+                    },
                     'settings': {
                         'wifi_ssid': settings_data.get('wifi_ssid'),
                         'wifi_signal': settings_data.get('wifi_rssi'),

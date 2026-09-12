@@ -44,6 +44,18 @@ The current release path uses the private GitLab commit, the existing AWS CodeBu
 
 The model is a visual reconstruction, not service CAD. Internal placement, gauges, and circuit animation are illustrative. Gauge needles do not represent measured pressure; the cloud feed exposes boiler targets/readiness, scale connection/battery, and completed-shot yields, not a continuous pressure or scale-weight trace.
 
+## Shot replay, connectivity, and ratios (v3.1.0)
+
+Click the modeled walnut paddle or **Play selected shot** to replay the current shot. The replay uses its recorded duration and final beverage yield. Flow, intermediate fill levels, component motion, scale animation, and the short drain sequence are illustrative. No machine-control commands are sent. Playback supports pause/resume, reset, and 1x/2x/4x speed. The machine and Look Inside views share one renderer; view/camera state is preserved when switching tabs.
+
+The modeled electronics distinguish the controller from the ESP32 gateway. The machine's captured API data reports `gatewayHw: Esp32`. La Marzocco's [connected-board announcement](https://home.lamarzoccousa.com/linea-mini-connected-machine-retrofit-kits-are-now-available/) says these boards were standard from LM015906. The [installation guide](https://home.lamarzoccousa.com/installation-guide-linea-mini-connected-machine-retrofit-kit/) documents a serial gateway connection to the controller. PCB details and placement are illustrative, not wiring instructions.
+
+Brew ratio means **dry coffee mass : beverage mass**, normalized to 1:x. For example, 18g dry coffee and 36g espresso is 1:2. The machine feed does not report dry dose, so ratios remain unset until the viewer enters a recipe default or per-shot override in **Brew log**. Inputs are stored locally on that device and are explicitly labeled as recipe defaults or per-shot entries. [Manufacturer ratio guide](https://home.lamarzoccousa.com/using-espresso-brew-ratios/).
+
+The scale is recessed into a grille cutout to match the owner's installation. The [current OEM Connected Scale Drain Tray](https://home.lamarzoccousa.com/product/linea-mini-connected-scale-drain-tray/) illustrates nearly flush mounting, but its listed compatibility is MI-series machines; that specific SKU is not asserted to be fitted to this LM-series machine.
+
+Run browser-independent replay and ratio checks with `node --test tests/*_test.mjs`. CodeBuild runs these in addition to the Python regression suite.
+
 ## Features
 
 - **Real-time machine status** (power, temperature, water level)

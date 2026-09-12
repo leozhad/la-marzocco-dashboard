@@ -80,3 +80,70 @@
  .model-fidelity{font-size:10px}
 }
 @media(max-width:360px){.header-actions{gap:5px}.matrix-icon{display:none}.brand{gap:8px;font-size:8px}.brand svg{width:29px}#matrix-toggle{padding:0 7px}.camera-tools{gap:3px}.camera-tools button{min-width:30px}.model-modes button{padding:8px}}
+
+/* One model moves between the dashboard and the 3D internal view. */
+#overview-model-slot,#inside-model-slot{min-height:0}
+.machine-display{position:relative;min-height:710px;width:100%}
+#machine-viewport{inset:46px 0 154px}
+.camera-tools{bottom:172px}
+.scene-note{bottom:145px}
+.shot-controls{position:absolute;left:22px;right:22px;bottom:14px;border-top:1px solid var(--line);padding-top:12px;z-index:5;background:#111d20eb}
+.replay-topline{display:flex;align-items:center;gap:12px;font-size:10px;color:var(--muted)}
+.replay-topline .kicker{color:var(--accent);font-size:9px}
+.replay-tag{margin-left:auto;font-size:8px;letter-spacing:1px}
+.replay-actions{display:flex;align-items:center;gap:10px;margin:10px 0}
+.replay-actions button{min-height:38px;padding:0 11px;border-radius:4px;background:#1a2a2e;border:1px solid var(--line)}
+.replay-actions .replay-play{background:var(--accent);color:var(--bg);border:0;font-size:11px;min-width:149px}
+.replay-actions button:disabled,[data-replay-play]:disabled{opacity:.45;cursor:default}
+#reset-shot{font-size:19px;min-width:38px}
+#replay-phase{font-size:11px;color:var(--muted);flex:1}
+.replay-actions label{font-size:10px;color:var(--muted);white-space:nowrap}
+#replay-speed{margin-left:5px;background:#1a2a2e;color:var(--text);border:1px solid var(--line);padding:6px;border-radius:3px}
+.replay-progress{height:3px;background:#2c4143;border-radius:2px;overflow:hidden}
+.replay-progress span{display:block;height:100%;width:0;background:var(--accent)}
+.replay-readouts{display:flex;align-items:center;gap:18px;margin-top:7px;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums}
+.replay-readouts output{color:var(--text)}
+.replay-readouts small{font-size:9px;margin-left:auto}
+.inside-selected{margin-top:22px;border-top:1px solid var(--line);padding-top:18px}
+.inside-selected strong,.inside-selected>span{display:block;margin:6px 0;font-size:12px;font-weight:400;color:var(--muted)}
+.inside-selected b{color:var(--text);font-weight:400}
+.inside-component{border-top:1px solid var(--line);margin-top:24px;padding-top:18px}
+.inside-component>strong{font-size:12px;color:var(--accent);font-weight:400}
+.inside-component p{font-size:11px;margin-top:10px}
+.inside-aside .replay-explanation,.inside-aside .model-sources{font-size:10px;line-height:1.8}
+.model-sources a{color:var(--accent)}
+@media(max-width:1000px){.replay-actions{flex-wrap:wrap}#replay-phase{flex-basis:100%;order:4}.machine-display{min-height:735px}#machine-viewport{bottom:177px}.scene-note{bottom:166px}.camera-tools{bottom:192px}.replay-readouts small{display:none}.replay-tag{font-size:7px}}
+@media(max-width:700px){
+ .machine-display{min-height:585px}
+ #machine-viewport{inset:39px 0 232px}
+ .model-modes{bottom:181px}
+ .camera-tools{bottom:234px}
+ #interact-model{bottom:236px}
+ .shot-controls{left:13px;right:13px;bottom:12px;padding-top:10px}
+ .replay-topline{font-size:9px;gap:8px}.replay-tag{display:none}
+ .replay-actions{gap:7px;margin:8px 0}.replay-actions button{min-height:40px}
+ .replay-actions .replay-play{min-width:0;flex:1;font-size:10px;padding:0 8px}
+ #reset-shot{min-width:32px;padding:0 7px}
+ #replay-phase{font-size:10px;min-height:15px;flex-basis:100%}
+ .replay-readouts{gap:10px;font-size:9px;flex-wrap:wrap}
+ .replay-readouts small{display:block;flex-basis:100%;font-size:8px;margin-left:0}
+ .inside-selected strong,.inside-selected>span{font-size:13px}
+}
+
+/* Brew ratio uses an explicitly supplied dry coffee dose. */
+.shot-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+.shot-metrics .ratio{font-size:28px;white-space:nowrap}
+.ratio-note{font-size:11px;color:var(--muted);line-height:1.6;margin-top:13px}
+.dose-link{background:none;color:var(--accent);padding:4px 0;min-height:36px;font-size:11px;text-align:left}
+.dose-settings{margin-top:24px;border-top:1px solid var(--line);padding-top:20px}
+.dose-settings p{font-size:11px;color:var(--muted);line-height:1.7;margin-top:10px}
+.dose-settings label{display:block;margin-top:15px;font-size:11px;color:var(--muted)}
+.dose-settings input{display:block;margin-top:6px;width:100%;min-height:42px;background:#142327;border:1px solid var(--line);border-radius:4px;color:var(--text);padding:8px 10px;font:inherit;font-size:14px}
+.dose-settings>div{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.dose-settings button{min-height:42px;border-radius:4px;background:var(--accent);color:var(--bg);font-size:11px;padding:8px 12px}
+.dose-settings #use-default-dose{border:1px solid var(--line);background:none;color:var(--muted)}
+.dose-settings small,.dose-settings>a{display:block;font-size:10px;line-height:1.7;color:var(--muted);margin-top:10px}
+.dose-settings>a{color:var(--accent)}
+.journal-list .ratio-source{font-size:9px}
+@media(max-width:1000px){.shot-metrics{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:16px}}
+@media(max-width:700px){.journal-list th:last-child,.journal-list td:last-child{display:none}.dose-settings input{font-size:16px}.shot-metrics .ratio{font-size:28px}}
