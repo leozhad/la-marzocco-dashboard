@@ -14,6 +14,19 @@ A personal dashboard for a connected Linea Mini: machine status, recent espresso
 
 The collector refreshes the snapshot **every five minutes**. An open browser checks for new JSON **every minute while visible**, preserves the selected shot and camera, and warns when readings are delayed. This is a read-only dashboard; its paddle and playback controls simulate a shot without operating the physical machine.
 
+### This machine's setup
+
+The owner-confirmed machine is **LM016332**, a classic Linea Mini with white panels and walnut/stainless controls.
+
+| Component | Installed configuration |
+| --- | --- |
+| Scale tray | [Pantechnicon Linea Mini Drain Tray Kit](https://www.pantechnicondesign.com/products/linea-lunar-scale-mod?variant=17451672647), **Complete Kit (pre-2024), P361**. Square grille openings and a black insert; the weighing surface sits slightly above the tray. |
+| Wood components | [Pantechnicon Linea Mini wood kit](https://www.pantechnicondesign.com/products/linea-mini-wood), for the classic 2015–2023 machine. Walnut finish and stainless details follow the owner's photos. |
+| Warming-deck cups | [Fellow Monty Demitasse](https://fellowproducts.com/products/monty-milk-art-cups), **3 oz / 90 ml**, matte white with copper bases. The model uses their handleless shape and rounded inner bowl. |
+| Connected scale | The owner's La Marzocco Connected Scale. Pantechnicon markets the tray for Acaia Lunar; the tray name does not change the installed scale's identity or telemetry. |
+
+The tray insert's published dimensions are 5.5 × 5 × 0.7 inches (139.7 × 127 × 17.78 mm). Other modeled accessory proportions are visual reconstructions. The kit listing offers different legs, portafilters, and badges; unconfirmed variants do not override the owner's photos. Accessory metadata lives in `web/machine-setup.mjs` and is distinct from cloud-reported readings.
+
 ### Understanding the readings
 
 | Display | Meaning |
@@ -89,7 +102,7 @@ For visual changes, check desktop and mobile layouts, tab switching, paddle/play
 | `src/lambda_function.py` | Cloud collection, statistics adapter, rendering, S3 publication, invalidation |
 | `web/index.html` | Jinja page shell and embedded initial snapshot |
 | `web/dashboard.js`, `web/dashboard.css` | Tabs, telemetry, brew log, refresh behavior, responsive layout |
-| `web/machine.js` | Procedural 3D model, materials, cameras, cutaway/exploded views |
+| `web/machine.js`, `web/machine-setup.mjs` | Procedural 3D model, owner-confirmed accessories, materials, cameras, cutaway/exploded views |
 | `web/paddle-kinematics.mjs`, `web/shot-replay.mjs` | Paddle movement and illustrative extraction playback |
 | `web/espresso-ratio.mjs`, `web/matrix.js` | Recipe ratios and optional background animation |
 | `web/vendor/` | Three.js modules and upstream license |
@@ -185,7 +198,6 @@ Operating cost depends on traffic, collection duration, build frequency, storage
 - [Linea Mini parts catalog](https://lamarzoccousa.com/wp-content/uploads/2019/04/Lineamini_Parts_Catalog_V1.5COLOR.pdf) and [classic Linea Mini manual](https://home.lamarzoccousa.com/wp-content/uploads/2023/09/Linea-Mini-Manual.pdf) — mechanical layout and paddle operation.
 - [Connected Scale](https://home.lamarzoccousa.com/product/connected-scale/), [brew-by-weight](https://home.lamarzoccousa.com/using-brew-by-weight-with-the-linea-mini/), and [brew ratios](https://home.lamarzoccousa.com/using-espresso-brew-ratios/) — scale and recipe semantics.
 - [Connected-machine retrofit guide](https://home.lamarzoccousa.com/installation-guide-linea-mini-connected-machine-retrofit-kit/) — gateway/controller context. PCB placement in the visualization is illustrative.
-- [Connected Scale Drain Tray](https://home.lamarzoccousa.com/product/linea-mini-connected-scale-drain-tray/) — flush-mount reference. Its listed MI-series compatibility does not identify the owner's LM-series tray SKU.
 - [AWS architecture diagram skill](https://github.com/awslabs/agent-plugins/tree/main/plugins/deploy-on-aws/skills/aws-architecture-diagram) — official AWS4 icon styling and draw.io workflow used for the diagrams.
 
 ## License

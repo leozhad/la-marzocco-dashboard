@@ -3,6 +3,7 @@ import { OrbitControls } from './vendor/OrbitControls.js';
 import { RoomEnvironment } from './vendor/RoomEnvironment.js';
 import { ShotReplay } from './shot-replay.mjs';
 import { paddleAngle, PADDLE_OFF_ANGLE } from './paddle-kinematics.mjs';
+import { MACHINE_SETUP } from './machine-setup.mjs';
 
 // Exterior proportions follow the supplied white/walnut Linea Mini photograph.
 // Hidden plumbing and boiler placement are schematic, not factory CAD.
@@ -95,6 +96,7 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
     copper: standard(0xb77240, 0.82, 0.3),
     brass: standard(0xc3a15c, 0.8, 0.33),
     ceramic: new THREE.MeshPhysicalMaterial({ color: 0xf9f7ec, roughness: 0.19, clearcoat: 0.8 }),
+    monty: new THREE.MeshPhysicalMaterial({ color: 0xf9f7ef, roughness: 0.48, clearcoat: 0.1 }),
     red: new THREE.MeshStandardMaterial({ color: 0xbb151c, emissive: 0xe8202c, emissiveIntensity: 2 }),
     blue: new THREE.MeshStandardMaterial({ color: 0x168bdd, emissive: 0x129aff, emissiveIntensity: 2 }),
   };
@@ -213,7 +215,7 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
     cylinder(0.21, 0.01, [x, 0, 0.369], mat.brushed, front, 'z');
     box([0.01, 0.12, 0.006], [x, 0.13, 0.38], mat.steel, front, 0.002);
   }
-  // The broad walnut group cover is fixed. Only the narrow, steel-inlaid
+  // Pantechnicon wood kit: the broad walnut group cover is fixed. Only the narrow, steel-inlaid
   // lever sweeps around the central vertical spindle (right OFF, left BREW).
   const coverAssembly = new THREE.Group();
   // Leave the panel-mounted red/blue indicator bezels outside the wood envelope.
@@ -322,16 +324,38 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
   tube([[-1.08,2.48,1.69],[-1.11,2.28,1.88],[-1.09,2.06,1.96]], 0.066, mat.chrome);
   cylinder(0.095, 0.12, [-1.09,2.06,1.96], mat.brushed);
 
-  // Recessed scale tray: the Connected Scale sits in a cutout, flush with the grille.
+  // Pantechnicon P361 (pre-2024): square grille openings and a black polymer
+  // insert. Published insert size is 5.5 x 5 x 0.7 inches. Model units ≈ 100 mm.
+  // The weighing platform sits slightly above the grille, as the maker specifies.
+  const insertWidth=MACHINE_SETUP.tray.insertWidthMm/100;
+  const insertDepth=MACHINE_SETUP.tray.insertDepthMm/100;
+  const insertHeight=MACHINE_SETUP.tray.insertHeightMm/100;
   box([3.63,0.45,1.4],[0,0.48,1.96],mat.white,machine,0.07);
-  for(const x of [-1.145,1.145]) {
-    box([1.18,0.06,1.31],[x,0.73,1.96],mat.chrome);
-    box([1.03,0.04,1.12],[x,0.76,1.96],mat.black);
+  for(const x of [-1.22,1.22]) {
+    box([1.02,0.06,1.31],[x,0.73,1.96],mat.chrome);
+    box([.95,0.04,1.12],[x,0.76,1.96],mat.black);
   }
   for(const z of [1.335,2.585])box([3.49,.06,.06],[0,.73,z],mat.chrome);
-  box([1.13,.025,1.11],[0,.625,1.97],mat.brushed,machine,.015,'recessed-scale-support');
-  for(const x of [-.565,.565])box([.025,.17,1.11],[x,.715,1.97],mat.brushed);
-  for(let i=-14;i<=14;i++)if(Math.abs(i*.111)>.58)box([0.018,0.025,1.13],[i*0.111,0.79,1.96],mat.brushed);
+  box([insertWidth,.025,insertDepth],[0,.625,1.97],mat.black,machine,.015,'pantechnicon-scale-support');
+  const insertShape=new THREE.Shape();
+  const roundedOutline=(path,w,d,r)=>{
+    path.moveTo(-w/2+r,-d/2);path.lineTo(w/2-r,-d/2);
+    path.quadraticCurveTo(w/2,-d/2,w/2,-d/2+r);path.lineTo(w/2,d/2-r);
+    path.quadraticCurveTo(w/2,d/2,w/2-r,d/2);path.lineTo(-w/2+r,d/2);
+    path.quadraticCurveTo(-w/2,d/2,-w/2,d/2-r);path.lineTo(-w/2,-d/2+r);
+    path.quadraticCurveTo(-w/2,-d/2,-w/2+r,-d/2);path.closePath();
+  };
+  roundedOutline(insertShape,insertWidth,insertDepth,.13);
+  const insertOpening=new THREE.Path();roundedOutline(insertOpening,1.09,1.09,.07);
+  insertShape.holes.push(insertOpening);
+  const insertGeometry=new THREE.ExtrudeGeometry(insertShape,{depth:insertHeight,bevelEnabled:false,curveSegments:16});
+  insertGeometry.rotateX(Math.PI/2);
+  const insert=mesh(insertGeometry,mat.black,machine,[0,.806,1.97],'pantechnicon-p361-scale-insert');
+  insert.userData.component='scale';
+  for(let i=-14;i<=14;i++)if(Math.abs(i*.111)>insertWidth/2+.015)
+    box([0.018,0.025,1.13],[i*0.111,0.79,1.96],mat.brushed);
+  for(let i=0;i<=10;i++)for(const x of [-1.22,1.22])
+    box([1.00,.025,.018],[x,.79,1.405+i*.111],mat.brushed);
   for(const z of [1.39,2.51])box([3.32,0.028,0.03],[0,0.795,z],mat.chrome);
   const scale = box([1.05,0.15,1.05],[0,0.72,1.97],mat.black,machine,0.065,'lamarzocco-connected-scale');
   scale.userData.component='scale';
@@ -356,13 +380,18 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
   },1024,128);
   mesh(new THREE.PlaneGeometry(1.43,0.18),new THREE.MeshBasicMaterial({map:logo,transparent:true,depthWrite:false}),machine,[0.77,0.43,2.675]);
 
-  // Cups and a small wooden-handled tool on the warming deck.
-  function cup(x,z,y,radius=0.28,parent=deck) {
-    const shape=[[0,0],[radius*.7,0],[radius*.82,.08],[radius,.4],[radius,.43],[radius-.035,.43],[radius-.04,.12],[0,.12]];
-    mesh(new THREE.LatheGeometry(shape.map(p=>new THREE.Vector2(...p)),40),mat.ceramic,parent,[x,y,z],'white-cup');
-    const ring=mesh(new THREE.TorusGeometry(.14,.032,10,32),mat.ceramic,parent,[x+radius+.09,y+.24,z]);ring.rotation.y=Math.PI/2;
+  // Fellow Monty 3 oz / 90 ml: handleless matte ceramic, a small copper foot,
+  // and a rounded internal bowl. Exterior proportions follow the product photos.
+  function cup(x,z,y,radius=0.30,parent=deck) {
+    const shape=[[0,.045],[radius*.84,.045],[radius*.97,.065],[radius,.085],
+      [radius,.48],[radius*.98,.5],[radius*.87,.5],[radius*.85,.47],
+      [radius*.84,.17],[radius*.74,.12],[radius*.5,.09],[0,.085]];
+    const body=mesh(new THREE.LatheGeometry(shape.map(p=>new THREE.Vector2(...p)),48),
+      mat.monty,parent,[x,y,z],'fellow-monty-demitasse');
+    body.userData.capacityMl=MACHINE_SETUP.cups.capacityMl;
+    cylinder(radius*.83,.045,[x,y+.025,z],mat.copper,parent,'y','monty-copper-base');
   }
-  cup(.48,-.45,.14,.3);cup(.48,-.45,.49,.31);cup(-.2,-.85,.14,.27);
+  cup(.48,-.45,.14);cup(.48,-.45,.60);cup(-.25,-.94,.14);
   cylinder(.18,.09,[-.85,.19,.1],mat.chrome,deck);
   cylinder(.105,.32,[-.85,.39,.1],mat.wood,deck);
 
@@ -449,7 +478,7 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
     paddlePivot.rotation.y=reduced.matches?opening:THREE.MathUtils.lerp(paddlePivot.rotation.y,opening,1-Math.exp(-dt*13));
     pump.position.copy(pumpBase);
     if(snapshot.pumpOn&&!reduced.matches)pump.position.x+=Math.sin(snapshot.elapsed*90)*.007;
-    coffee.position.y=.126+Math.min(snapshot.yield/70,.85)*.25;
+    coffee.position.y=.126+Math.min(snapshot.yield/MACHINE_SETUP.cups.capacityMl,.9)*.35;
     streams.visible=snapshot.pumpOn&&snapshot.elapsed>Math.min(.8,snapshot.duration*.1);
     for(const [index,flow] of flows.entries()) {
       const active=index===2?snapshot.status==='draining':snapshot.pumpOn;
@@ -585,6 +614,6 @@ export function createMachine(viewport, onSelect, { onShotRequest, onReplayUpdat
     restoreView(view){controls.minDistance=view.minDistance??6.2;mode(view.mode);camera.position.fromArray(view.camera);controls.target.fromArray(view.target);request();},
     focus(name){if(focusAnchors[name]){controls.minDistance=2;controls.target.copy(focusAnchors[name]);camera.position.copy(focusAnchors[name]).add(new THREE.Vector3(1.7,.75,2));request();}},
     update(data){mat.red.emissiveIntensity=data.status?.power_on?2:0;mat.blue.emissiveIntensity=data.status?.power_on?2:0;request();},
-    diagnostics(){return {mode:state.mode,interactive:state.interactive,visible:state.visible,contextLost:state.contextLost,autoRotate:controls.autoRotate,camera:camera.position.toArray(),gauges:2,woodenControls:2,cups:3,iotGateway:true,replay:replay.snapshot(),paddleAngle:paddlePivot.rotation.y,paddleScreen:paddleScreenPoint(),triangles:renderer.info.render.triangles,renderCalls:renderer.info.render.calls};},
+    diagnostics(){return {mode:state.mode,interactive:state.interactive,visible:state.visible,contextLost:state.contextLost,autoRotate:controls.autoRotate,camera:camera.position.toArray(),gauges:2,woodenControls:2,cups:3,cupModel:MACHINE_SETUP.cups.name,cupCapacityMl:MACHINE_SETUP.cups.capacityMl,traySku:MACHINE_SETUP.tray.sku,setupSerial:MACHINE_SETUP.serialNumber,iotGateway:true,replay:replay.snapshot(),paddleAngle:paddlePivot.rotation.y,paddleScreen:paddleScreenPoint(),triangles:renderer.info.render.triangles,renderCalls:renderer.info.render.calls};},
   };
 }

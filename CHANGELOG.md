@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replace architecture visuals with editable AWS4 draw.io diagrams and embedded PNG previews for runtime, private releases, and the retained GitHub pipeline.
 - Add diagram regeneration instructions and an operator release/rollback guide; identify superseded design and deployment documents.
 
+## [3.1.3] - 2026-09-12
+
+### Added
+- Record the owner-confirmed Pantechnicon P361 pre-2024 tray, walnut wood kit, and Fellow Monty 3 oz / 90 ml demitasse cups for LM016332.
+
+### Changed
+- Model the tray's square grille and black insert, and use handleless matte-white Monty cups with copper bases on the deck and in shot replay.
+
 ## [3.1.2] - 2026-09-12
 
 ### Fixed

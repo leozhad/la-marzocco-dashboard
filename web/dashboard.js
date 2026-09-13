@@ -1,5 +1,6 @@
 import { createMatrix } from './matrix.js';
 import { DEFAULT_COFFEE_DOSE_G, doseForShot, ratioLabel, validDose } from './espresso-ratio.mjs';
+import { MACHINE_SETUP } from './machine-setup.mjs';
 
 let data = JSON.parse(document.getElementById('machine-data').textContent);
 let selectedTime = data.recent_shots?.[0]?.time;
@@ -172,7 +173,7 @@ function component(name) {
     group: ['02 / Brew-by-weight',
       `Paddle right: off. Move left to brew. Dose A: ${number(brew.dose_1)}g · Dose B: ${number(brew.dose_2)}g. Brew-by-weight stops flow at the target; return the manual paddle right afterward.`],
     scale: ['03 / La Marzocco Connected Scale',
-      `Made with Acaia · Recessed into your drip tray · ${status.scale_connected ? 'Connected' : 'Disconnected'} · ${number(status.scale_battery)}% battery. ${status.scale_calibration_required ? 'Calibration required.' : 'No calibration requested.'} Completed-shot weights appear in the brew log.`],
+      `Made with Acaia · ${data.machine_info?.serial_number === MACHINE_SETUP.serialNumber ? 'Pantechnicon P361 tray, with a nearly flush black insert' : 'Recessed tray installation'} · ${status.scale_connected ? 'Connected' : 'Disconnected'} · ${number(status.scale_battery)}% battery. ${status.scale_calibration_required ? 'Calibration required.' : 'No calibration requested.'} Completed-shot weights appear in the brew log.`],
     iot: ['04 / ESP32 connectivity gateway',
       `Gateway: ${data.connectivity?.gateway_hardware?.toUpperCase() || 'ESP32 (recorded hardware identification)'}. Firmware: ${data.connectivity?.gateway_firmware || 'see machine details'}. The gateway links the controller to Wi-Fi and the La Marzocco app. The installation guide shows a serial connection between controller and gateway.`],
     pump: ['05 / Rotary pump',
@@ -288,6 +289,9 @@ function renderDetails() {
   set('#maintenance', `Last cleaning: ${care.last_cleaning_date || 'Not reported'}\nSmart standby: ${settings.smart_standby_enabled ? `${settings.smart_standby_minutes} minutes` : 'Disabled'}\nWater: ${settings.plumbed_in ? 'Plumbed in' : 'Tank'}`);
   set('#network-details', `Wi-Fi: ${settings.wifi_ssid || 'Not reported'} (${number(settings.wifi_signal)} dBm)\nGateway: ${data.connectivity?.gateway_hardware?.toUpperCase() || 'Not reported'}\nScale: ${status.scale_name || 'Not reported'}\nCalibration: ${status.scale_calibration_required ? 'Required' : 'Not requested'}\nClient: pylamarzocco ${data.client_version || ''}`);
   set('#firmware', `${data.machine_info?.firmware_version || 'Not reported'}\nUpdates: ${care.firmware_update_available ? 'Available' : 'Up to date'}`);
+  set('#hardware-details', data.machine_info?.serial_number === MACHINE_SETUP.serialNumber
+    ? `${MACHINE_SETUP.serialNumber}\nPantechnicon P361 tray · pre-2024\nPantechnicon walnut wood kit\nFellow Monty Demitasse · 3 oz / 90 ml\nMatte white ceramic · copper bases`
+    : 'Accessory configuration has not been recorded for this machine.');
   const notes = document.getElementById('firmware-notes');
   const opened = new Set([...notes.querySelectorAll('details[open]')].map(el => el.dataset.name));
   notes.replaceChildren();
