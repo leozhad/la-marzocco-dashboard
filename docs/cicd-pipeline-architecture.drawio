@@ -7,7 +7,7 @@
         <mxCell id="title" value="Private-source release workflow" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=30;fontStyle=1;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="30" y="25" width="1280" height="42" />
         </mxCell>
-        <mxCell id="subtitle" value="Current application releases · private GitLab source · AWS CodeBuild packaging" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=16;fontStyle=0;" vertex="1" parent="1">
+        <mxCell id="subtitle" value="Alternative manual releases · private GitLab source · AWS CodeBuild packaging" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=16;fontStyle=0;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="30" y="70" width="1280" height="30" />
         </mxCell>
         <mxCell id="separator" value="" style="fontFamily=Helvetica;html=1;shape=line;strokeWidth=2;strokeColor=#FF9900;" vertex="1" parent="1">
@@ -176,7 +176,7 @@
         <mxCell id="legend-copy-6" value="&lt;b&gt;Update and verify&lt;/b&gt;&lt;div&gt;&lt;span style=&quot;color: light-dark(rgb(0,0,0), rgb(255,255,255));&quot;&gt;Use the Lambda revision ID to guard the code update, invoke the collector, and verify its response plus the public HTML and JSON.&lt;/span&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="1432" y="745" width="538" height="90" />
         </mxCell>
-        <mxCell id="legend-scope" value="&lt;b&gt;Application code releases only&lt;/b&gt;&lt;br&gt;This path does not execute a CloudFormation change set.&lt;br&gt;The retained GitHub pipeline is documented separately." style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+        <mxCell id="legend-scope" value="&lt;b&gt;Application code releases only&lt;/b&gt;&lt;br&gt;This path does not execute a CloudFormation change set.&lt;br&gt;The primary CodePipeline workflow is documented separately." style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="1380" y="875" width="580" height="80" />
         </mxCell>
       </root>

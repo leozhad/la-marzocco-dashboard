@@ -1,13 +1,13 @@
 <mxfile host="Electron" version="29.6.1">
-  <diagram name="Retained GitHub deployment pipeline" id="github-pipeline-architecture">
+  <diagram name="Primary CodePipeline deployment" id="github-pipeline-architecture">
     <mxGraphModel dx="2040" dy="980" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="2040" pageHeight="980" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="title" value="Retained GitHub deployment pipeline" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=30;fontStyle=1;" vertex="1" parent="1">
+        <mxCell id="title" value="Primary CodePipeline deployment" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=30;fontStyle=1;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="30" y="25" width="1280" height="42" />
         </mxCell>
-        <mxCell id="subtitle" value="Configured infrastructure path · distinct from the current private-source release workflow" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=16;fontStyle=0;" vertex="1" parent="1">
+        <mxCell id="subtitle" value="GitHub source · tested builds · CloudFormation changes · Lambda code delivery" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=16;fontStyle=0;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="30" y="70" width="1280" height="30" />
         </mxCell>
         <mxCell id="separator" value="" style="fontFamily=Helvetica;html=1;shape=line;strokeWidth=2;strokeColor=#FF9900;" vertex="1" parent="1">
@@ -117,7 +117,7 @@
         <mxCell id="pipeline-scope" value="Arrows show pipeline stage order and artifact flow.&lt;br&gt;CodePipeline starts the CloudFormation and updater actions." style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="390" y="830" width="820" height="45" />
         </mxCell>
-        <mxCell id="github-note" value="This configuration watches&lt;br&gt;GitHub, not GitLab.&lt;br&gt;Current releases use the&lt;br&gt;private workflow diagram." style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+        <mxCell id="github-note" value="This configuration watches&lt;br&gt;GitHub, not GitLab.&lt;br&gt;Private manual releases use&lt;br&gt;the alternative workflow." style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="30" y="485" width="190" height="100" />
         </mxCell>
         <mxCell id="step-1" value="1" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=16;" vertex="1" parent="1">
@@ -174,7 +174,7 @@
         <mxCell id="legend-copy-6" value="&lt;b&gt;Resume scheduled collection&lt;/b&gt;&lt;div&gt;&lt;span style=&quot;color: light-dark(rgb(0,0,0), rgb(255,255,255));&quot;&gt;The helper updates the dashboard Lambda's code. EventBridge continues invoking the collector every five minutes.&lt;/span&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="1432" y="745" width="538" height="90" />
         </mxCell>
-        <mxCell id="legend-scope" value="&lt;b&gt;Configured, not the current release route&lt;/b&gt;&lt;br&gt;A private GitLab push does not trigger this pipeline.&lt;br&gt;No GitHub personal access token is used by its source action." style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+        <mxCell id="legend-scope" value="&lt;b&gt;Primary automated deployment workflow&lt;/b&gt;&lt;br&gt;A private GitLab push does not trigger this pipeline.&lt;br&gt;No GitHub personal access token is used by its source action." style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="1380" y="875" width="580" height="80" />
         </mxCell>
       </root>

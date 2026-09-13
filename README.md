@@ -96,7 +96,7 @@ For visual changes, check desktop and mobile layouts, tab switching, paddle/play
 | `tools/preview.py` | Local staging of the production frontend |
 | `tests/` | Python and Node regression suites |
 | `buildspec.yml` | Linux build, tests, and Lambda packaging |
-| `cloudformation/main.yaml`, `cloudformation/pipeline.yaml` | Application and retained pipeline infrastructure |
+| `cloudformation/main.yaml`, `cloudformation/pipeline.yaml` | Application and CodePipeline infrastructure |
 | `docs/`, `generated-diagrams/` | Release guide, editable architecture diagrams, and PNG previews |
 | `tools/generate_architecture_diagrams.py` | Reproducible diagram XML generation |
 
@@ -104,15 +104,26 @@ The root deployment shell scripts, `src/lambda_function_optimized.py`, `cloudfor
 
 ## Deployment
 
-Current application releases use **private GitLab → committed source archive → AWS CodeBuild → Lambda code update**. A GitLab push records the source revision; an operator starts the AWS build and deployment separately.
+### Primary: AWS CodePipeline
 
-![Private GitLab source built in CodeBuild and released to the dashboard Lambda](generated-diagrams/cicd-pipeline-architecture.png)
+The primary deployment workflow is **GitHub → AWS CodePipeline → CodeBuild → CloudFormation → Lambda code update**. The pipeline watches the GitHub repository's `main` branch through CodeConnections.
 
-[Editable draw.io source](docs/cicd-pipeline-architecture.drawio) · [Release and rollback procedure](docs/deployment.md)
+![GitHub-triggered CodePipeline deployment of infrastructure and application code](generated-diagrams/github-pipeline-architecture.png)
 
-The existing CodePipeline still watches GitHub through CodeConnections. It builds the source, applies a CloudFormation change set, and invokes a helper Lambda to update application code. It is a **separate retained path**, not an automatic continuation of a private GitLab push. See the [GitHub pipeline diagram](generated-diagrams/github-pipeline-architecture.png) and [editable source](docs/github-pipeline-architecture.drawio).
+[Editable draw.io source](docs/github-pipeline-architecture.drawio) · [Release and rollback procedure](docs/deployment.md)
 
-The current private path deploys application code only. Infrastructure edits require a reviewed CloudFormation change set. Changing `.env` or pushing to GitLab does not update the deployed domain, schedule, or stack configuration. The legacy `deploy-pipeline.sh` still asks for a GitHub PAT, which the current CodeConnections source action does not use.
+1. **Source:** push the tested, reviewed commit to GitHub `main`; CodePipeline retrieves it through the configured connection.
+2. **Build:** CodeBuild runs the Python and Node suites and packages the collector, dependencies, and `web/` using `buildspec.yml`.
+3. **Deploy:** CloudFormation creates and executes the application change set, then a helper Lambda updates the collector's code.
+4. **Verify:** check the pipeline execution and the public dashboard after the next scheduled collection, or invoke the collector for an immediate refresh.
+
+Infrastructure changes belong in the CloudFormation templates and are applied through this workflow. Changing a local `.env` file does not update the deployed configuration. The legacy `deploy-pipeline.sh` still asks for a GitHub PAT, which the CodeConnections source action does not use.
+
+### Alternative: private GitLab and manual AWS release
+
+The private path uses **GitLab → committed source archive → CodeBuild → direct Lambda code update**. An operator starts the build and deployment separately; a GitLab push alone does not trigger AWS. This alternative updates application code only and does not apply CloudFormation changes.
+
+See the [private release diagram](generated-diagrams/cicd-pipeline-architecture.png), [editable source](docs/cicd-pipeline-architecture.drawio), and [manual release procedure](docs/deployment.md#alternative-private-gitlab-and-aws).
 
 ### Deployment reference
 
@@ -121,14 +132,14 @@ Configuration checked **2026-09-12**; these identifiers describe this installati
 | Resource | Value |
 | --- | --- |
 | Public site | `https://espresso.leozh.net/` |
-| AWS account / region | `<account-id>` / `us-west-2` |
+| AWS region | `us-west-2` |
 | Application stack | `la-marzocco-dashboard` |
 | Collector Lambda | `la-marzocco-dashboard-updater` — Python 3.12, 512 MB, 300s timeout |
 | Schedule | `la-marzocco-dashboard-schedule` — `rate(5 minutes)` |
 | Website bucket | `la-marzocco-dashboard-exwneqtv` |
 | CloudFront distribution | `E1CKKDNSRS9CLJ` |
 | Build project | `la-marzocco-deployment-pipeline-build` |
-| Retained pipeline | `la-marzocco-deployment-pipeline-pipeline` |
+| CodePipeline | `la-marzocco-deployment-pipeline-pipeline` |
 
 Lambda requires `S3_BUCKET_NAME` and `LAMARZOCCO_SECRET_NAME`; `CLOUDFRONT_DISTRIBUTION_ID` enables invalidation. The secret contains `username` and `password`. Previewing and unit testing do not require these settings.
 
@@ -142,6 +153,8 @@ These examples use the owner's `leo` CLI profile and explicitly select `us-west-
 aws --profile leo --region us-west-2 sts get-caller-identity
 aws --profile leo --region us-west-2 logs tail \
   /aws/lambda/la-marzocco-dashboard-updater --since 1h
+aws --profile leo --region us-west-2 codepipeline get-pipeline-state \
+  --name la-marzocco-deployment-pipeline-pipeline
 aws --profile leo --region us-west-2 codebuild list-builds-for-project \
   --project-name la-marzocco-deployment-pipeline-build --sort-order DESCENDING
 ```
@@ -153,7 +166,7 @@ aws --profile leo --region us-west-2 codebuild list-builds-for-project \
 | Cloud authentication fails | Check Secrets Manager configuration and cloud-account machine registration. The collector persists its installation key in S3. |
 | Wrong ratio | Edit the dry-dose recipe or per-shot override in Brew log. Scale connection does not provide dry coffee dose. |
 | GitLab push did not deploy | Start the private release procedure; there is no GitLab-triggered AWS pipeline. |
-| Failed retained pipeline | Inspect CodePipeline stage status, CodeBuild logs, and application CloudFormation events. |
+| Failed CodePipeline deployment | Inspect CodePipeline stage status, CodeBuild logs, and application CloudFormation events. |
 
 To refresh immediately, invoke the collector and inspect its returned `statusCode`. **This publishes to the live website**; it is not a read-only test.
 

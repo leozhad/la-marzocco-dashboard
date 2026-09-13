@@ -1,12 +1,26 @@
 # Releasing the dashboard
 
-[Back to README](../README.md) · [Current release diagram](../generated-diagrams/cicd-pipeline-architecture.png) · [Retained GitHub pipeline](../generated-diagrams/github-pipeline-architecture.png)
+[Back to README](../README.md) · [Primary CodePipeline diagram](../generated-diagrams/github-pipeline-architecture.png) · [Alternative private release](../generated-diagrams/cicd-pipeline-architecture.png)
 
-## Current path: private GitLab and AWS
+## Primary: GitHub and AWS CodePipeline
 
-Application releases use committed source from the private `gitlab` remote, a per-build S3 source override on the existing CodeBuild project, and a direct Lambda code update. GitLab is source storage; it has no configured trigger for this AWS build. This procedure records the established operator-driven workflow; there is no checked-in end-to-end release command.
+The primary deployment pipeline `la-marzocco-deployment-pipeline-pipeline` is defined in `cloudformation/pipeline.yaml`:
 
-The existing installation uses AWS account `<account-id>`, region `us-west-2`, and CLI profile `leo`. Explicitly verify the caller account. If a development environment redirects `AWS_CONFIG_FILE` or `AWS_SHARED_CREDENTIALS_FILE`, ensure the command uses the intended credential files; a profile name alone does not establish the account.
+1. **Source:** GitHub `leozhad/la-marzocco-dashboard`, branch `main`, via `CodeStarSourceConnection` / CodeConnections. This action uses an authorized connection, not a GitHub PAT.
+2. **Build:** CodeBuild reads the committed root `buildspec.yml`. Its default artifact export contains the source tree, CloudFormation template, and deployment ZIP.
+3. **Deploy:** CloudFormation creates and executes the application change set at run orders 1 and 2. At run order 3, `la-marzocco-deployment-pipeline-update-lambda` extracts the build's Lambda ZIP and updates `la-marzocco-dashboard-updater`.
+
+Push the tested, reviewed commit to GitHub `main`, monitor the pipeline execution, and verify the public snapshot after collection. This path watches GitHub; it does not consume private GitLab pushes. Scheduled EventBridge collection continues independently of either release path. Pipeline/stack update timestamps also do not describe the latest direct Lambda code release.
+
+### Pipeline rollback
+
+Revert the application change in Git and push the reviewed revert to GitHub `main` to run it through the same pipeline. Inspect any infrastructure changes in that revert before deployment; a Git revert does not undo external data changes. Verify the resulting pipeline execution and dashboard refresh.
+
+## Alternative: private GitLab and AWS
+
+The alternative manual release procedure uses committed source from the private `gitlab` remote, a per-build S3 source override on the existing CodeBuild project, and a direct Lambda code update. GitLab is source storage; it has no configured trigger for this AWS build. This procedure records the established operator-driven workflow; there is no checked-in end-to-end release command.
+
+The existing installation uses region `us-west-2` and CLI profile `leo`. Resolve account-specific resource identifiers from AWS at deployment time rather than recording them in the repository. Explicitly verify the caller account. If a development environment redirects `AWS_CONFIG_FILE` or `AWS_SHARED_CREDENTIALS_FILE`, ensure the command uses the intended credential files; a profile name alone does not establish the account.
 
 ```bash
 aws --profile leo --region us-west-2 sts get-caller-identity
@@ -28,17 +42,26 @@ The `origin` remote has multiple push destinations, including GitHub. Use `git p
 
 ### CodeBuild overrides
 
-Use `aws codebuild start-build --cli-input-json file://<request.json>` with an input object containing these fields, replacing `<commit>` with the recorded revision:
+Resolve the existing artifact bucket from the pipeline stack:
+
+```bash
+artifact_bucket=$(aws --profile leo --region us-west-2 cloudformation describe-stacks \
+  --stack-name la-marzocco-deployment-pipeline \
+  --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucket'].OutputValue | [0]" \
+  --output text)
+```
+
+Use `aws codebuild start-build --cli-input-json file://<request.json>` with an input object containing these fields. Replace `<commit>` with the recorded revision and `<artifact-bucket>` with the resolved bucket name:
 
 ```json
 {
   "projectName": "la-marzocco-deployment-pipeline-build",
   "sourceTypeOverride": "S3",
-  "sourceLocationOverride": "la-marzocco-deployment-pipeline-pipeline-artifacts-<account-id>/manual-deployments/<commit>/source.zip",
+  "sourceLocationOverride": "<artifact-bucket>/manual-deployments/<commit>/source.zip",
   "buildspecOverride": "<buildspec.yml contents with the artifact selection described below>",
   "artifactsOverride": {
     "type": "S3",
-    "location": "la-marzocco-deployment-pipeline-pipeline-artifacts-<account-id>",
+    "location": "<artifact-bucket>",
     "path": "manual-deployments/<commit>",
     "namespaceType": "NONE",
     "name": "build.zip",
@@ -58,25 +81,15 @@ artifacts:
 
 Serialize this YAML as the JSON field's string value; the placeholder above is not executable input. The saved project's source and artifact types remain `CODEPIPELINE`. The per-build overrides do not reconfigure it or deploy CloudFormation changes.
 
-## Rollback
+### Manual release rollback
 
 Use the previously downloaded Lambda ZIP, guarded by the current function `RevisionId`, to restore code. Wait for the update to finish, invoke the collector to republish the previous frontend, and verify the public page and JSON. Retained hashed asset bundles allow older HTML to keep loading its modules.
 
 There is no documented `LIVE` alias or version-based release mechanism in these templates. A Git revert records a source change; it does not deploy automatically through the private path. If machine-cloud collection is unavailable during rollback, the last published snapshot remains until a successful refresh.
 
-## Retained GitHub/CodePipeline path
-
-The configured pipeline `la-marzocco-deployment-pipeline-pipeline` remains defined in `cloudformation/pipeline.yaml`:
-
-1. **Source:** GitHub `leozhad/la-marzocco-dashboard`, branch `main`, via `CodeStarSourceConnection` / CodeConnections. This action uses an authorized connection, not a GitHub PAT.
-2. **Build:** CodeBuild reads the committed root `buildspec.yml`. Its default artifact export contains the source tree, CloudFormation template, and deployment ZIP.
-3. **Deploy:** CloudFormation creates and executes the application change set at run orders 1 and 2. At run order 3, `la-marzocco-deployment-pipeline-update-lambda` extracts the build's Lambda ZIP and updates `la-marzocco-dashboard-updater`.
-
-This path watches GitHub; it does not consume private GitLab pushes. Scheduled EventBridge collection continues independently of either release path. Pipeline/stack update timestamps also do not describe the latest direct Lambda code release.
-
 ## Infrastructure and legacy tooling
 
-Changes to the domain, schedule, resource configuration, or permissions require review and application of a CloudFormation change set. The private application-code procedure above does not apply these changes. `cloudformation/main.yaml` defines the app, while `cloudformation/pipeline.yaml` defines the retained build/deployment resources and shared login secret.
+Changes to the domain, schedule, resource configuration, or permissions require review and application of a CloudFormation change set. The private application-code procedure above does not apply these changes. `cloudformation/main.yaml` defines the app, while `cloudformation/pipeline.yaml` defines the build/deployment resources and shared login secret.
 
 The old shell scripts need reconciliation before reuse:
 

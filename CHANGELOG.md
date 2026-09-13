@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Documentation
+- Remove committed AWS account identifiers and resolve account-specific deployment resources from CloudFormation or Lambda configuration.
+- Present GitHub-triggered CodePipeline as the primary deployment workflow, with private GitLab/AWS releases documented as an alternative.
 - Rewrite the README around the current 3D dashboard, data semantics, local development, and deployment workflow; remove obsolete setup guidance and unsupported cost estimates.
 - Replace architecture visuals with editable AWS4 draw.io diagrams and embedded PNG previews for runtime, private releases, and the retained GitHub pipeline.
 - Add diagram regeneration instructions and an operator release/rollback guide; identify superseded design and deployment documents.

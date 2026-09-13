@@ -16,13 +16,12 @@ This document contains the actual deployed resource identifiers for quick refere
 - **Application Stack**: `la-marzocco-dashboard` (UPDATE_COMPLETE)
 - **Pipeline Stack**: `la-marzocco-deployment-pipeline` (UPDATE_COMPLETE)
 - **Region**: us-west-2
-- **AWS Account**: <account-id>
 
 ### Lambda Functions
 
 #### Main Application Function
 - **Name**: `la-marzocco-dashboard-updater`
-- **ARN**: `arn:aws:lambda:us-west-2:<account-id>:function:la-marzocco-dashboard-updater`
+- **ARN**: Resolve with `aws lambda get-function --function-name la-marzocco-dashboard-updater --query Configuration.FunctionArn` using the deployment profile and region.
 - **Runtime**: Python 3.12
 - **Memory**: 512 MB
 - **Timeout**: 300 seconds (5 minutes)
@@ -65,8 +64,8 @@ This document contains the actual deployed resource identifiers for quick refere
 - **State**: ENABLED
 
 ### Secrets Manager
-- **Secret Name**: `la-marzocco-deployment-pipeline-lamarzocco-credentials-wmmEA5`
-- **Full ARN**: `arn:aws:secretsmanager:us-west-2:<account-id>:secret:la-marzocco-deployment-pipeline-lamarzocco-credentials-wmmEA5`
+- **Secret Name**: `la-marzocco-deployment-pipeline-lamarzocco-credentials`
+- **Full ARN**: Resolve the deployed collector's `Environment.Variables.LAMARZOCCO_SECRET_NAME` with `aws lambda get-function-configuration` using the deployment profile and region.
 - **Purpose**: Stores La Marzocco API credentials (username/password)
 - **Shared**: Used by both pipeline and Lambda function
 

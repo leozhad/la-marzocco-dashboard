@@ -196,7 +196,7 @@ def application():
 
 def release():
     d = Diagram("cicd-pipeline-architecture", "Private-source release workflow",
-                "Current application releases · private GitLab source · AWS CodeBuild packaging", 980)
+                "Alternative manual releases · private GitLab source · AWS CodeBuild packaging", 980)
     d.region("region-west", "us-west-2", 280, 210, 1000, 680)
     d.actor("gitlab", "Private GitLab<br>repository", "internet", 30, 260)
     d.actor("operator", "Release operator<br>local Git + AWS CLI", "generic_application", 30, 640)
@@ -231,14 +231,14 @@ def release():
         d.step(n, title, desc, x, y, 120 + (n - 1) * 125)
     d.text("legend-scope", "<b>Application code releases only</b><br>"
            "This path does not execute a CloudFormation change set.<br>"
-           "The retained GitHub pipeline is documented separately.",
+           "The primary CodePipeline workflow is documented separately.",
            1380, 875, 580, 80)
     d.save()
 
 
-def retained_pipeline():
-    d = Diagram("github-pipeline-architecture", "Retained GitHub deployment pipeline",
-                "Configured infrastructure path · distinct from the current private-source release workflow", 980)
+def github_pipeline():
+    d = Diagram("github-pipeline-architecture", "Primary CodePipeline deployment",
+                "GitHub source · tested builds · CloudFormation changes · Lambda code delivery", 980)
     d.region("region-west", "us-west-2 · CodePipeline orchestration", 280, 210, 1000, 680)
     d.actor("github", "GitHub repository<br>main branch", "internet", 30, 300)
     d.service("pipeline", "Orchestration", "AWS CodePipeline", "Source → build", "codepipeline", "developer", 340, 300)
@@ -258,7 +258,7 @@ def retained_pipeline():
     d.text("pipeline-scope", "Arrows show pipeline stage order and artifact flow.<br>"
            "CodePipeline starts the CloudFormation and updater actions.", 390, 830, 820, 45)
     d.text("github-note", "This configuration watches<br>GitHub, not GitLab.<br>"
-           "Current releases use the<br>private workflow diagram.", 30, 485, 190, 100)
+           "Private manual releases use<br>the alternative workflow.", 30, 485, 190, 100)
     steps = [
         ("Fetch GitHub source", "The configured source action watches leozhad/la-marzocco-dashboard:main through a CodeStarSourceConnection action.", 205, 280),
         ("Build the source artifact", "CodePipeline starts the same CodeBuild project used by private releases. This path uses its default CODEPIPELINE source.", 490, 260),
@@ -269,7 +269,7 @@ def retained_pipeline():
     ]
     for n, (title, desc, x, y) in enumerate(steps, 1):
         d.step(n, title, desc, x, y, 120 + (n - 1) * 125)
-    d.text("legend-scope", "<b>Configured, not the current release route</b><br>"
+    d.text("legend-scope", "<b>Primary automated deployment workflow</b><br>"
            "A private GitLab push does not trigger this pipeline.<br>"
            "No GitHub personal access token is used by its source action.",
            1380, 875, 580, 80)
@@ -279,4 +279,4 @@ def retained_pipeline():
 if __name__ == "__main__":
     application()
     release()
-    retained_pipeline()
+    github_pipeline()

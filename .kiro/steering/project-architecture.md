@@ -3,8 +3,8 @@
 The [README](../../README.md) is the maintained architecture and development guide. Use these generated diagrams rather than creating additional text sketches:
 
 - [Runtime and data flow](../../generated-diagrams/application-architecture.png) — [editable source](../../docs/application-architecture.drawio).
-- [Current private release workflow](../../generated-diagrams/cicd-pipeline-architecture.png) — [editable source](../../docs/cicd-pipeline-architecture.drawio).
-- [Retained GitHub pipeline](../../generated-diagrams/github-pipeline-architecture.png) — [editable source](../../docs/github-pipeline-architecture.drawio).
+- [Alternative private release workflow](../../generated-diagrams/cicd-pipeline-architecture.png) — [editable source](../../docs/cicd-pipeline-architecture.drawio).
+- [Primary CodePipeline workflow](../../generated-diagrams/github-pipeline-architecture.png) — [editable source](../../docs/github-pipeline-architecture.drawio).
 
 See [diagram maintenance](../../docs/diagrams.md) and the [release guide](../../docs/deployment.md).
 
@@ -22,9 +22,9 @@ See [diagram maintenance](../../docs/diagrams.md) and the [release guide](../../
 
 ## Deployment constraints
 
-- Current releases push committed source to the private `gitlab` remote, then explicitly run CodeBuild with per-build S3 overrides and update Lambda code. A GitLab push alone does not deploy.
-- The retained CodePipeline watches GitHub through CodeConnections. Do not describe it as the private source path or instruct contributors to add a GitHub PAT.
+- Alternative manual releases push committed source to the private `gitlab` remote, then explicitly run CodeBuild with per-build S3 overrides and update Lambda code. A GitLab push alone does not deploy.
+- The primary deployment workflow uses CodePipeline watching GitHub through CodeConnections. Do not describe it as the private source path or instruct contributors to add a GitHub PAT.
 - Application code updates do not apply CloudFormation changes. Use a reviewed change set for infrastructure changes.
-- Verify the intended AWS account and specify the region explicitly. This installation uses account `<account-id>`, profile `leo`, and `us-west-2`; its CloudFront certificate is in `us-east-1`.
+- Verify the intended AWS account and specify the region explicitly. This installation uses profile `leo` and `us-west-2`; its CloudFront certificate is in `us-east-1`. Resolve account IDs and account-specific ARNs at deployment time; do not commit them.
 - Preserve user credential configuration. Preview and unit tests need no cloud credentials.
 - Root captures, legacy scripts, and timestamped local backups are not release source. Stage intended files and build from the committed archive.

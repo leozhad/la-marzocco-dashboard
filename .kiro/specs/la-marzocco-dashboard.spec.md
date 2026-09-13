@@ -40,7 +40,7 @@ A serverless web dashboard for monitoring La Marzocco espresso machines via the 
 
 ## Architecture Summary
 
-Use the maintained [runtime diagram](../../generated-diagrams/application-architecture.png), [private release diagram](../../generated-diagrams/cicd-pipeline-architecture.png), and [retained GitHub pipeline diagram](../../generated-diagrams/github-pipeline-architecture.png). Editable sources and browser previews are in the [diagram guide](../../docs/diagrams.md).
+Use the maintained [runtime diagram](../../generated-diagrams/application-architecture.png), [alternative private release diagram](../../generated-diagrams/cicd-pipeline-architecture.png), and [primary CodePipeline diagram](../../generated-diagrams/github-pipeline-architecture.png). Editable sources and browser previews are in the [diagram guide](../../docs/diagrams.md).
 
 ## Implementation Summary
 
@@ -69,7 +69,6 @@ All implementation tasks have been completed. For the detailed task breakdown, s
 - **Dashboard URL**: https://espresso.leozh.net
 - **Route53 Hosted Zone**: `leozh.net` (ZQ8T2XWSALP2Q)
 - **Region**: us-west-2
-- **AWS Account**: <account-id>
 
 ### Monthly Cost: ~$2.75
 - Lambda: ~$0.20

@@ -16,13 +16,13 @@ The maintained architecture diagrams below replace the original text sketches. I
 
 [Editable draw.io source](../../../docs/application-architecture.drawio)
 
-### Current private release workflow
+### Alternative private release workflow
 
 ![Private GitLab source built in CodeBuild and released to Lambda](../../../generated-diagrams/cicd-pipeline-architecture.png)
 
 [Editable draw.io source](../../../docs/cicd-pipeline-architecture.drawio) · [Release guide](../../../docs/deployment.md)
 
-### Retained GitHub pipeline
+### Primary CodePipeline workflow
 
 ![Configured GitHub pipeline for infrastructure and code deployment](../../../generated-diagrams/github-pipeline-architecture.png)
 
