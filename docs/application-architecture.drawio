@@ -1,0 +1,244 @@
+<mxfile host="Electron" version="29.6.1">
+  <diagram name="La Marzocco dashboard" id="application-architecture">
+    <mxGraphModel dx="2040" dy="1140" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="2040" pageHeight="1140" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="La Marzocco dashboard" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=30;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="30" y="25" width="1280" height="42" />
+        </mxCell>
+        <mxCell id="subtitle" value="Scheduled cloud snapshots · static delivery · interactive 3D in the browser" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=16;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="30" y="70" width="1280" height="30" />
+        </mxCell>
+        <mxCell id="separator" value="" style="fontFamily=Helvetica;html=1;shape=line;strokeWidth=2;strokeColor=#FF9900;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="30" y="105" width="1280" height="2" />
+        </mxCell>
+        <mxCell id="aws-cloud" value="AWS Cloud" style="fontFamily=Helvetica;html=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud;container=1;pointerEvents=0;collapsible=0;verticalAlign=top;align=left;spacingLeft=30;fontSize=14;fontStyle=1;fillColor=light-dark(#232F3E0D,#232F3E0D);fillStyle=auto;strokeColor=#232F3E;fontColor=light-dark(#232F3E,#F5F5F5);" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="250" y="140" width="1060" height="960" />
+        </mxCell>
+        <mxCell id="legend-bg" value="" style="fontFamily=Helvetica;html=1;rounded=1;arcSize=3;fillColor=light-dark(#EDF3FF,#305363);fillStyle=auto;strokeColor=#AABBD4;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1350" y="30" width="650" height="1090" />
+        </mxCell>
+        <mxCell id="legend-title" value="How it works" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=22;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1380" y="55" width="580" height="35" />
+        </mxCell>
+        <mxCell id="region-west" value="us-west-2 · collection and storage" style="fontFamily=Helvetica;html=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;container=0;pointerEvents=0;collapsible=0;fillColor=light-dark(#0C7B7D0D,#0C7B7D0D);fillStyle=auto;strokeColor=#00A4A6;fontColor=#00A4A6;dashed=1;fontSize=14;fontStyle=1;align=left;verticalAlign=top;spacingLeft=30;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="280" y="600" width="1000" height="490" />
+        </mxCell>
+        <mxCell id="browser" value="Web browser" style="fontFamily=Helvetica;html=1;rounded=1;whiteSpace=wrap;verticalAlign=top;spacingTop=8;fontStyle=1;fontSize=12;container=1;pointerEvents=0;collapsible=0;fillColor=light-dark(#F5F5F5,#29333F);fillStyle=auto;strokeColor=light-dark(#666666,#D4D4D4);fontColor=light-dark(#232F3E,#F5F5F5);" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="30" y="400" width="140" height="120" />
+        </mxCell>
+        <mxCell id="browser-icon" value="" style="fontFamily=Helvetica;html=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.users;fillColor=#545B64;strokeColor=#FFFFFF;" vertex="1" parent="browser">
+          <mxGeometry as="geometry" x="46" y="48" width="48" height="48" />
+        </mxCell>
+        <mxCell id="lm-cloud" value="La Marzocco&lt;br&gt;Cloud API" style="fontFamily=Helvetica;html=1;rounded=1;whiteSpace=wrap;verticalAlign=top;spacingTop=8;fontStyle=1;fontSize=12;container=1;pointerEvents=0;collapsible=0;fillColor=light-dark(#F5F5F5,#29333F);fillStyle=auto;strokeColor=light-dark(#666666,#D4D4D4);fontColor=light-dark(#232F3E,#F5F5F5);" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="30" y="880" width="140" height="120" />
+        </mxCell>
+        <mxCell id="lm-cloud-icon" value="" style="fontFamily=Helvetica;html=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.internet;fillColor=#545B64;strokeColor=#FFFFFF;" vertex="1" parent="lm-cloud">
+          <mxGeometry as="geometry" x="46" y="48" width="48" height="48" />
+        </mxCell>
+        <mxCell id="machine-note" value="Linea Mini + ESP32 gateway&lt;br&gt;and Connected Scale&lt;br&gt;&lt;br&gt;Machine telemetry reaches&lt;br&gt;La Marzocco's cloud." style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="30" y="730" width="185" height="125" />
+        </mxCell>
+        <mxCell id="browser-note" value="Three.js model + shot replay&lt;br&gt;Recipe doses and Matrix&lt;br&gt;preferences stay in&lt;br&gt;browser localStorage." style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="30" y="550" width="190" height="100" />
+        </mxCell>
+        <mxCell id="container-dns" value="DNS" style="fontFamily=Helvetica;html=1;fillColor=light-dark(#EDE7F6,#29333F);fillStyle=auto;strokeColor=#8C4FFF;fontColor=#8C4FFF;rounded=1;arcSize=10;whiteSpace=wrap;verticalAlign=top;fontStyle=1;fontSize=12;container=1;pointerEvents=0;collapsible=0;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="320" y="220" width="120" height="120" />
+        </mxCell>
+        <mxCell id="dns" value="Amazon Route 53&lt;div&gt;&lt;i&gt;Domain alias&lt;/i&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;sketch=0;outlineConnect=0;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.route_53;fillColor=#8C4FFF;strokeColor=#FFFFFF;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=10;fontStyle=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;labelWidth=116;whiteSpace=wrap;aspect=fixed;" vertex="1" parent="container-dns">
+          <mxGeometry as="geometry" x="36" y="30" width="48" height="48" />
+        </mxCell>
+        <mxCell id="container-cdn" value="Delivery" style="fontFamily=Helvetica;html=1;fillColor=light-dark(#EDE7F6,#29333F);fillStyle=auto;strokeColor=#8C4FFF;fontColor=#8C4FFF;rounded=1;arcSize=10;whiteSpace=wrap;verticalAlign=top;fontStyle=1;fontSize=12;container=1;pointerEvents=0;collapsible=0;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="620" y="400" width="120" height="120" />
+        </mxCell>
+        <mxCell id="cdn" value="Amazon CloudFront&lt;div&gt;&lt;i&gt;HTTPS + OAC&lt;/i&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;sketch=0;outlineConnect=0;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudfront;fillColor=#8C4FFF;strokeColor=#FFFFFF;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=10;fontStyle=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;labelWidth=116;whiteSpace=wrap;aspect=fixed;" vertex="1" parent="container-cdn">
+          <mxGeometry as="geometry" x="36" y="30" width="48" height="48" />
+        </mxCell>
+        <mxCell id="container-cert" value="TLS certificate" style="fontFamily=Helvetica;html=1;fillColor=light-dark(#FFEBEE,#29333F);fillStyle=auto;strokeColor=#DD344C;fontColor=#DD344C;rounded=1;arcSize=10;whiteSpace=wrap;verticalAlign=top;fontStyle=1;fontSize=12;container=1;pointerEvents=0;collapsible=0;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="920" y="220" width="120" height="120" />
+        </mxCell>
+        <mxCell id="cert" value="ACM&lt;div&gt;&lt;i&gt;us-east-1&lt;/i&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;sketch=0;outlineConnect=0;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.certificate_manager_3;fillColor=#DD344C;strokeColor=#FFFFFF;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=10;fontStyle=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;labelWidth=116;whiteSpace=wrap;aspect=fixed;" vertex="1" parent="container-cert">
+          <mxGeometry as="geometry" x="36" y="30" width="48" height="48" />
+        </mxCell>
+        <mxCell id="container-schedule" value="Schedule" style="fontFamily=Helvetica;html=1;fillColor=light-dark(#FCE4EC,#29333F);fillStyle=auto;strokeColor=#E7157B;fontColor=#E7157B;rounded=1;arcSize=10;whiteSpace=wrap;verticalAlign=top;fontStyle=1;fontSize=12;container=1;pointerEvents=0;collapsible=0;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="320" y="660" width="120" height="120" />
+        </mxCell>
+        <mxCell id="schedule" value="Amazon EventBridge&lt;div&gt;&lt;i&gt;Every 5 minutes&lt;/i&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;sketch=0;outlineConnect=0;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eventbridge;fillColor=#E7157B;strokeColor=#FFFFFF;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=10;fontStyle=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;labelWidth=116;whiteSpace=wrap;aspect=fixed;" vertex="1" parent="container-schedule">
+          <mxGeometry as="geometry" x="36" y="30" width="48" height="48" />
+        </mxCell>
+        <mxCell id="container-collector" value="Compute" style="fontFamily=Helvetica;html=1;fillColor=light-dark(#FFF2E8,#29333F);fillStyle=auto;strokeColor=#ED7100;fontColor=#ED7100;rounded=1;arcSize=10;whiteSpace=wrap;verticalAlign=top;fontStyle=1;fontSize=12;container=1;pointerEvents=0;collapsible=0;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="620" y="660" width="120" height="120" />
+        </mxCell>
+        <mxCell id="collector" value="AWS Lambda&lt;div&gt;&lt;i&gt;Collect + render&lt;/i&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;sketch=0;outlineConnect=0;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;strokeColor=#FFFFFF;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=10;fontStyle=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;labelWidth=116;whiteSpace=wrap;aspect=fixed;" vertex="1" parent="container-collector">
+          <mxGeometry as="geometry" x="36" y="30" width="48" height="48" />
+        </mxCell>
+        <mxCell id="container-site" value="Storage" style="fontFamily=Helvetica;html=1;fillColor=light-dark(#E8F5E9,#29333F);fillStyle=auto;strokeColor=#3F8624;fontColor=#3F8624;rounded=1;arcSize=10;whiteSpace=wrap;verticalAlign=top;fontStyle=1;fontSize=12;container=1;pointerEvents=0;collapsible=0;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="920" y="660" width="120" height="120" />
+        </mxCell>
+        <mxCell id="site" value="Amazon S3&lt;div&gt;&lt;i&gt;Site + state&lt;/i&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;sketch=0;outlineConnect=0;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;fillColor=#3F8624;strokeColor=#FFFFFF;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=10;fontStyle=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;labelWidth=116;whiteSpace=wrap;aspect=fixed;" vertex="1" parent="container-site">
+          <mxGeometry as="geometry" x="36" y="30" width="48" height="48" />
+        </mxCell>
+        <mxCell id="container-secret" value="Credentials" style="fontFamily=Helvetica;html=1;fillColor=light-dark(#FFEBEE,#29333F);fillStyle=auto;strokeColor=#DD344C;fontColor=#DD344C;rounded=1;arcSize=10;whiteSpace=wrap;verticalAlign=top;fontStyle=1;fontSize=12;container=1;pointerEvents=0;collapsible=0;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="620" y="920" width="120" height="120" />
+        </mxCell>
+        <mxCell id="secret" value="Secrets Manager&lt;div&gt;&lt;i&gt;Cloud login&lt;/i&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;sketch=0;outlineConnect=0;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.secrets_manager;fillColor=#DD344C;strokeColor=#FFFFFF;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=10;fontStyle=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;labelWidth=116;whiteSpace=wrap;aspect=fixed;" vertex="1" parent="container-secret">
+          <mxGeometry as="geometry" x="36" y="30" width="48" height="48" />
+        </mxCell>
+        <mxCell id="schedule-collect" edge="1" parent="1" source="schedule" target="collector" style="fontFamily=Helvetica;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=1.5;strokeColor=light-dark(#545B64,#D4D4D4);exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="schedule-collect-label" value="invoke" style="fontFamily=Helvetica;edgeLabel;html=1;align=center;verticalAlign=middle;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=11;labelBackgroundColor=none;" vertex="1" connectable="0" parent="schedule-collect">
+          <mxGeometry as="geometry" relative="1" x="0" y="16" />
+        </mxCell>
+        <mxCell id="collect-secret" edge="1" parent="1" source="collector" target="secret" style="fontFamily=Helvetica;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=1.5;strokeColor=light-dark(#545B64,#D4D4D4);exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="collect-secret-label" value="read credentials" style="fontFamily=Helvetica;edgeLabel;html=1;align=center;verticalAlign=middle;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=11;labelBackgroundColor=none;" vertex="1" connectable="0" parent="collect-secret">
+          <mxGeometry as="geometry" relative="1" x="0" y="16" />
+        </mxCell>
+        <mxCell id="collect-api" edge="1" parent="1" source="collector" target="lm-cloud" style="fontFamily=Helvetica;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=1.5;strokeColor=light-dark(#545B64,#D4D4D4);exitX=0;exitY=0.8;entryX=1;entryY=0.5;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="570" y="728" />
+              <mxPoint x="570" y="934" />
+              <mxPoint x="220" y="934" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="collect-api-label" value="HTTPS reads" style="fontFamily=Helvetica;edgeLabel;html=1;align=center;verticalAlign=middle;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=11;labelBackgroundColor=none;" vertex="1" connectable="0" parent="collect-api">
+          <mxGeometry as="geometry" relative="1" x="0.1" y="16" />
+        </mxCell>
+        <mxCell id="collect-site" edge="1" parent="1" source="collector" target="site" style="fontFamily=Helvetica;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=1.5;strokeColor=light-dark(#545B64,#D4D4D4);exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="collect-site-label" value="assets → JSON → HTML" style="fontFamily=Helvetica;edgeLabel;html=1;align=center;verticalAlign=middle;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=11;labelBackgroundColor=none;" vertex="1" connectable="0" parent="collect-site">
+          <mxGeometry as="geometry" relative="1" x="0" y="16" />
+        </mxCell>
+        <mxCell id="dns-browser" edge="1" parent="1" source="dns" target="browser" style="fontFamily=Helvetica;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=1.5;strokeColor=light-dark(#545B64,#D4D4D4);exitX=0;exitY=0.5;entryX=0.5;entryY=0;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="240" y="274" />
+              <mxPoint x="100" y="274" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dns-browser-label" value="DNS lookup / alias" style="fontFamily=Helvetica;edgeLabel;html=1;align=center;verticalAlign=middle;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=11;labelBackgroundColor=none;" vertex="1" connectable="0" parent="dns-browser">
+          <mxGeometry as="geometry" relative="1" x="0.1" y="16" />
+        </mxCell>
+        <mxCell id="cert-cdn" edge="1" parent="1" source="cert" target="cdn" style="fontFamily=Helvetica;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=1.5;strokeColor=light-dark(#545B64,#D4D4D4);exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="980" y="370" />
+              <mxPoint x="680" y="370" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cert-cdn-label" value="TLS certificate" style="fontFamily=Helvetica;edgeLabel;html=1;align=center;verticalAlign=middle;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=11;labelBackgroundColor=none;" vertex="1" connectable="0" parent="cert-cdn">
+          <mxGeometry as="geometry" relative="1" x="0" y="16" />
+        </mxCell>
+        <mxCell id="browser-cdn" edge="1" parent="1" source="browser" target="cdn" style="fontFamily=Helvetica;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=1.5;strokeColor=light-dark(#545B64,#D4D4D4);exitX=1;exitY=0.45;entryX=0;entryY=0.5;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="browser-cdn-label" value="HTTPS · JSON poll every 60s" style="fontFamily=Helvetica;edgeLabel;html=1;align=center;verticalAlign=middle;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=11;labelBackgroundColor=none;" vertex="1" connectable="0" parent="browser-cdn">
+          <mxGeometry as="geometry" relative="1" x="0" y="16" />
+        </mxCell>
+        <mxCell id="cdn-site" edge="1" parent="1" source="cdn" target="site" style="fontFamily=Helvetica;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=1.5;strokeColor=light-dark(#545B64,#D4D4D4);exitX=1;exitY=0.5;entryX=0.5;entryY=0;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="980" y="454" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cdn-site-label" value="S3 origin reads · OAC" style="fontFamily=Helvetica;edgeLabel;html=1;align=center;verticalAlign=middle;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=11;labelBackgroundColor=none;" vertex="1" connectable="0" parent="cdn-site">
+          <mxGeometry as="geometry" relative="1" x="-0.3" y="16" />
+        </mxCell>
+        <mxCell id="collect-invalidate" edge="1" parent="1" source="collector" target="cdn" style="fontFamily=Helvetica;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=1.5;strokeColor=light-dark(#545B64,#D4D4D4);exitX=0.75;exitY=0;entryX=0.75;entryY=1;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="692" y="560" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="collect-invalidate-label" value="invalidate changed paths" style="fontFamily=Helvetica;edgeLabel;html=1;align=center;verticalAlign=middle;fontColor=light-dark(#232F3E,#F5F5F5);fontSize=11;labelBackgroundColor=none;" vertex="1" connectable="0" parent="collect-invalidate">
+          <mxGeometry as="geometry" relative="1" x="0" y="-80" />
+        </mxCell>
+        <mxCell id="state-note" value="S3 state: installation key, content hashes, asset completion markers.&lt;br&gt;Site objects: index.html, data.json, assets/&amp;lt;hash&amp;gt;/*.&lt;br&gt;Collection errors leave the last published snapshot available." style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="870" y="875" width="370" height="120" />
+        </mxCell>
+        <mxCell id="step-1" value="1" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="470" y="675" width="28" height="28" />
+        </mxCell>
+        <mxCell id="legend-badge-1" value="1" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1380" y="115" width="40" height="38" />
+        </mxCell>
+        <mxCell id="legend-copy-1" value="&lt;b&gt;Collect on a schedule&lt;/b&gt;&lt;div&gt;&lt;span style=&quot;color: light-dark(rgb(0,0,0), rgb(255,255,255));&quot;&gt;EventBridge invokes the Python 3.12 collector every five minutes.&lt;/span&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1432" y="115" width="538" height="90" />
+        </mxCell>
+        <mxCell id="step-2" value="2" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="735" y="812" width="28" height="28" />
+        </mxCell>
+        <mxCell id="legend-badge-2" value="2" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1380" y="232" width="40" height="38" />
+        </mxCell>
+        <mxCell id="legend-copy-2" value="&lt;b&gt;Authenticate the collector&lt;/b&gt;&lt;div&gt;&lt;span style=&quot;color: light-dark(rgb(0,0,0), rgb(255,255,255));&quot;&gt;Lambda reads the cloud login from Secrets Manager and reuses the installation key stored in S3.&lt;/span&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1432" y="232" width="538" height="90" />
+        </mxCell>
+        <mxCell id="step-3" value="3" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="510" y="815" width="28" height="28" />
+        </mxCell>
+        <mxCell id="legend-badge-3" value="3" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1380" y="349" width="40" height="38" />
+        </mxCell>
+        <mxCell id="legend-copy-3" value="&lt;b&gt;Read the machine snapshot&lt;/b&gt;&lt;div&gt;&lt;span style=&quot;color: light-dark(rgb(0,0,0), rgb(255,255,255));&quot;&gt;pylamarzocco queries La Marzocco's cloud. The dashboard does not connect directly to the machine or scale.&lt;/span&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1432" y="349" width="538" height="90" />
+        </mxCell>
+        <mxCell id="step-4" value="4" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="770" y="620" width="28" height="28" />
+        </mxCell>
+        <mxCell id="legend-badge-4" value="4" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1380" y="466" width="40" height="38" />
+        </mxCell>
+        <mxCell id="legend-copy-4" value="&lt;b&gt;Publish a complete frontend&lt;/b&gt;&lt;div&gt;&lt;span style=&quot;color: light-dark(rgb(0,0,0), rgb(255,255,255));&quot;&gt;Upload hashed assets first, then data.json, then index.html. Reuse existing asset bundles on later refreshes.&lt;/span&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1432" y="466" width="538" height="90" />
+        </mxCell>
+        <mxCell id="step-5" value="5" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="265" y="225" width="28" height="28" />
+        </mxCell>
+        <mxCell id="legend-badge-5" value="5" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1380" y="583" width="40" height="38" />
+        </mxCell>
+        <mxCell id="legend-copy-5" value="&lt;b&gt;Resolve the public domain&lt;/b&gt;&lt;div&gt;&lt;span style=&quot;color: light-dark(rgb(0,0,0), rgb(255,255,255));&quot;&gt;Route 53 points espresso.leozh.net to CloudFront. DNS is separate from the HTTP request path.&lt;/span&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1432" y="583" width="538" height="90" />
+        </mxCell>
+        <mxCell id="step-6" value="6" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1055" y="345" width="28" height="28" />
+        </mxCell>
+        <mxCell id="legend-badge-6" value="6" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1380" y="700" width="40" height="38" />
+        </mxCell>
+        <mxCell id="legend-copy-6" value="&lt;b&gt;Provide HTTPS&lt;/b&gt;&lt;div&gt;&lt;span style=&quot;color: light-dark(rgb(0,0,0), rgb(255,255,255));&quot;&gt;CloudFront uses an ACM certificate issued in us-east-1. The collection workload runs in us-west-2.&lt;/span&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1432" y="700" width="538" height="90" />
+        </mxCell>
+        <mxCell id="step-7" value="7" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="205" y="415" width="28" height="28" />
+        </mxCell>
+        <mxCell id="legend-badge-7" value="7" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1380" y="817" width="40" height="38" />
+        </mxCell>
+        <mxCell id="legend-copy-7" value="&lt;b&gt;Read and explore&lt;/b&gt;&lt;div&gt;&lt;span style=&quot;color: light-dark(rgb(0,0,0), rgb(255,255,255));&quot;&gt;CloudFront serves the S3 content. The browser polls JSON every minute while visible; replay and 3D controls run locally.&lt;/span&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1432" y="817" width="538" height="90" />
+        </mxCell>
+        <mxCell id="step-8" value="8" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="735" y="550" width="28" height="28" />
+        </mxCell>
+        <mxCell id="legend-badge-8" value="8" style="fontFamily=Helvetica;html=1;rounded=1;fillColor=#007CBD;strokeColor=default;strokeWidth=2;shadow=1;glass=0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1380" y="934" width="40" height="38" />
+        </mxCell>
+        <mxCell id="legend-copy-8" value="&lt;b&gt;Refresh changed content&lt;/b&gt;&lt;div&gt;&lt;span style=&quot;color: light-dark(rgb(0,0,0), rgb(255,255,255));&quot;&gt;Lambda invalidates /, /index.html and /data.json as needed. Timestamp-only changes do not trigger invalidations.&lt;/span&gt;&lt;/div&gt;" style="fontFamily=Helvetica;html=1;text;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=light-dark(#232F3E,#F5F5F5);align=left;verticalAlign=top;fontSize=14;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1432" y="934" width="538" height="90" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

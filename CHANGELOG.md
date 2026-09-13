@@ -5,6 +5,13 @@ All notable changes to the La Marzocco Dashboard project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Documentation
+- Rewrite the README around the current 3D dashboard, data semantics, local development, and deployment workflow; remove obsolete setup guidance and unsupported cost estimates.
+- Replace architecture visuals with editable AWS4 draw.io diagrams and embedded PNG previews for runtime, private releases, and the retained GitHub pipeline.
+- Add diagram regeneration instructions and an operator release/rollback guide; identify superseded design and deployment documents.
+
 ## [3.1.2] - 2026-09-12
 
 ### Fixed

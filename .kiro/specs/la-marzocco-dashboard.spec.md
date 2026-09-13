@@ -8,6 +8,8 @@ last_updated: 2025-10-31
 
 # La Marzocco Dashboard - Project Summary
 
+> Historical v2 project summary. Features, cost estimates, and deployment status below reflect the original implementation. See the [README](../../README.md) for the current dashboard and release process.
+
 > **Note**: This is the project summary document. For detailed specifications, see:
 > - [Requirements](./la-marzocco-dashboard/requirements.md) - User stories and acceptance criteria
 > - [Design](./la-marzocco-dashboard/design.md) - Architecture and technical design
@@ -38,23 +40,7 @@ A serverless web dashboard for monitoring La Marzocco espresso machines via the 
 
 ## Architecture Summary
 
-For detailed architecture and design decisions, see [Design Document](./la-marzocco-dashboard/design.md).
-
-### Application Architecture
-- **EventBridge**: Triggers Lambda function every 5 minutes
-- **Lambda**: Collects data from La Marzocco API and generates HTML
-- **S3**: Hosts static website files (HTML + JSON)
-- **CloudFront**: Global CDN with SSL termination
-- **Route53**: DNS management for custom domain
-- **Secrets Manager**: Secure storage for La Marzocco credentials
-- **CloudWatch**: Logging and monitoring
-
-### CI/CD Pipeline Architecture
-1. **Developer** commits code to GitHub
-2. **CodePipeline** automatically detects changes
-3. **CodeBuild** packages Lambda function with dependencies
-4. **CloudFormation** updates infrastructure and Lambda code
-5. **Dashboard** is automatically updated
+Use the maintained [runtime diagram](../../generated-diagrams/application-architecture.png), [private release diagram](../../generated-diagrams/cicd-pipeline-architecture.png), and [retained GitHub pipeline diagram](../../generated-diagrams/github-pipeline-architecture.png). Editable sources and browser previews are in the [diagram guide](../../docs/diagrams.md).
 
 ## Implementation Summary
 

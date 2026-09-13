@@ -1,47 +1,32 @@
 # Design Document
 
+> Historical design record from the original implementation. The [README](../../../README.md) is the maintained description of the current dashboard.
+
 ## Overview
 
 The La Marzocco Dashboard is a serverless web application built on AWS that monitors La Marzocco espresso machines through the La Marzocco Cloud API. The system uses an event-driven architecture with Lambda functions triggered by EventBridge on a 5-minute schedule, generating static HTML/JSON content served globally via CloudFront CDN.
 
 ## Architecture
 
-### High-Level Architecture
+The maintained architecture diagrams below replace the original text sketches. Implementation details after this section describe the original design; see the [README](../../../README.md) for current behavior.
 
-```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│ EventBridge │────▶│    Lambda    │────▶│     S3      │
-│  (5 min)    │     │  (Collect &  │     │  (Static    │
-└─────────────┘     │   Generate)  │     │   Hosting)  │
-                    └──────────────┘     └─────────────┘
-                           │                     │
-                           │                     ▼
-                    ┌──────▼──────┐     ┌─────────────┐
-                    │   Secrets   │     │ CloudFront  │
-                    │   Manager   │     │    (CDN)    │
-                    └─────────────┘     └─────────────┘
-                                               │
-                                               ▼
-                                        ┌─────────────┐
-                                        │   Route53   │
-                                        │    (DNS)    │
-                                        └─────────────┘
-```
+### Runtime and data flow
 
-### CI/CD Pipeline Architecture
+![Scheduled collection and browser delivery](../../../generated-diagrams/application-architecture.png)
 
-```
-┌─────────┐     ┌──────────────┐     ┌─────────────┐     ┌──────────────┐
-│ GitHub  │────▶│ CodePipeline │────▶│  CodeBuild  │────▶│ CloudFormation│
-│  (Push) │     │   (Source)   │     │   (Build)   │     │   (Deploy)    │
-└─────────┘     └──────────────┘     └─────────────┘     └──────────────┘
-                                                                  │
-                                                                  ▼
-                                                          ┌──────────────┐
-                                                          │Lambda Update │
-                                                          │  (Code Push) │
-                                                          └──────────────┘
-```
+[Editable draw.io source](../../../docs/application-architecture.drawio)
+
+### Current private release workflow
+
+![Private GitLab source built in CodeBuild and released to Lambda](../../../generated-diagrams/cicd-pipeline-architecture.png)
+
+[Editable draw.io source](../../../docs/cicd-pipeline-architecture.drawio) · [Release guide](../../../docs/deployment.md)
+
+### Retained GitHub pipeline
+
+![Configured GitHub pipeline for infrastructure and code deployment](../../../generated-diagrams/github-pipeline-architecture.png)
+
+[Editable draw.io source](../../../docs/github-pipeline-architecture.drawio)
 
 ## Components and Interfaces
 

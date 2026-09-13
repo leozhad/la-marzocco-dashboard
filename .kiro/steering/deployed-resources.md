@@ -1,5 +1,7 @@
 # La Marzocco Dashboard - Deployed Resources Reference
 
+> Historical resource snapshot: identifiers may still be useful, but statuses, package sizes, costs, and release dates below are not current verification. Use the [README deployment reference](../../README.md#deployment-reference) and [release guide](../../docs/deployment.md). Most resources run in us-west-2; the CloudFront ACM certificate is in us-east-1 and DNS/CDN services are global.
+
 ## Quick Reference
 
 This document contains the actual deployed resource identifiers for quick reference when working with the live system.

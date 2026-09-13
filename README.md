@@ -1,667 +1,180 @@
 # La Marzocco Dashboard
 
-A serverless web dashboard for monitoring your La Marzocco espresso machine, built with AWS Lambda and the La Marzocco Cloud API.
+A personal dashboard for a connected Linea Mini: machine status, recent espresso shots, and an interactive 3D model of the owner's white, stainless-steel, and walnut machine.
 
-![Application Architecture](generated-diagrams/application-architecture.png)
+**[Open the dashboard](https://espresso.leozh.net/)** · [Machine snapshot](https://espresso.leozh.net/data.json) · [Release guide](docs/deployment.md) · [Changelog](CHANGELOG.md)
 
+## What it does
 
-## Interactive dashboard (v3.0.0)
+- **The machine:** a photo-informed 3D model with white side panels, walnut controls, visible indicator lights, and a Connected Scale recessed into the drip tray. Orbit the model, switch camera views, or inspect its cutaway and exploded views.
+- **Brew log:** lifetime shot and flush counters, seven-day activity in the machine's timezone, and up to five recent shots with duration, beverage yield, temperature target, and brew ratio.
+- **Shot replay:** click the modeled paddle or press **Play selected shot**. Follow the extraction in the exterior or **Look inside** view, including the controller and ESP32 connectivity gateway. Playback supports pause, reset, and 1×/2×/4× speed.
+- **Machine information:** boiler targets/readiness, power and cloud connection, scale connection/battery, brew-by-weight settings, standby settings, and firmware information when supplied by the cloud feed.
+- **Mobile and Matrix mode:** responsive layouts, opt-in touch interaction with the 3D model, and an optional persistent Matrix background. Reduced-motion preferences are respected.
 
-The dashboard uses a responsive Three.js frontend with the user's white, stainless steel, and walnut Linea Mini configuration. The 3D model includes the twin metal knobs, walnut paddle and portafilter handle, pressure gauges, warming-tray cups, and La Marzocco Connected Scale. Orbit, front/top camera views, and assembled/cutaway/exploded modes are available. On phones, tap **Interact with 3D** to rotate; normal vertical scrolling is preserved until interaction is enabled.
+The collector refreshes the snapshot **every five minutes**. An open browser checks for new JSON **every minute while visible**, preserves the selected shot and camera, and warns when readings are delayed. This is a read-only dashboard; its paddle and playback controls simulate a shot without operating the physical machine.
 
-**Matrix mode** is optional and persistent. Subtle green/copper numeric and coffee glyphs run behind the dashboard; reduced-motion settings use a static version, and animation pauses when the tab is hidden.
+### Understanding the readings
 
-The frontend checks `data.json` every minute while visible. Collection still runs every five minutes. Updates preserve the selected shot, camera, view, and Matrix setting. Delayed or failed refreshes keep the last successful readings and show a freshness warning.
+| Display | Meaning |
+| --- | --- |
+| Brew ratio | Dry coffee mass : beverage mass, normalized to 1:x. An 18g dose yielding 36g espresso is **1:2**. |
+| Dry dose | The owner's **18g recipe default**, adjustable globally or per shot in Brew log. Saved in that browser's localStorage. |
+| Shot yield / `dose_value` | Recorded beverage output in grams. The cloud's brew-by-weight “dose” setting refers to output, not dry grounds. |
+| Temperature | Brew-boiler or shot **target**, expressed in °F; not a continuous measured temperature trace. |
+| Replay | Uses the recorded duration and final yield. Intermediate flow, cup fill, gauge needles, and internal motion are illustrative. |
+| Scale | Connection, battery, and related settings when available. This collector does not receive live mass or measured dry coffee dose. |
 
-### Frontend development
+The classic Linea Mini paddle moves **right (OFF) → left (BREW)** around a central pivot; the broad walnut cover stays fixed. In brew-by-weight replay, flow stops at the recorded yield while the manual paddle stays left until returned. The model is a visual reconstruction, not service CAD or a wiring guide.
 
-- `web/index.html`: page shell and safely embedded initial JSON.
-- `web/dashboard.css`, `web/dashboard.js`: responsive layout, telemetry, tabs, shot comparisons, and refresh handling.
-- `web/machine.js`: procedural 3D machine, materials, orbit controls, and model modes.
-- `web/matrix.js`: optional background effect and reduced-motion handling.
-- `web/vendor/`: Three.js 0.170.0, OrbitControls, RoomEnvironment, and upstream MIT license.
-- `tools/preview.py`: stages the production frontend locally without contacting AWS.
+## Architecture
+
+![Scheduled collection and browser delivery for the La Marzocco dashboard](generated-diagrams/application-architecture.png)
+
+[Editable draw.io source](docs/application-architecture.drawio) · [Diagram previews and regeneration](docs/diagrams.md)
+
+1. An EventBridge rule invokes the Python 3.12 Lambda collector every five minutes.
+2. Lambda retrieves the La Marzocco login from Secrets Manager, reuses an installation key stored in S3, and reads the **first machine** returned by the cloud account.
+3. The pinned `pylamarzocco==2.4.3` client collects dashboard, settings, schedule, and statistics. A small adapter preserves shot weights, temperature targets, and daily flush counts omitted by its typed statistics models.
+4. Lambda renders the Jinja page shell and publishes a static frontend to S3. CloudFront serves it over HTTPS using an ACM certificate in `us-east-1`; Route 53 provides the domain alias. Collection and storage run in `us-west-2`.
+5. The browser renders the vendored Three.js model, shot replay, and charts locally. `/data.json` is a generated snapshot, not a request-time machine API.
+
+### Publication and caching
+
+Every Lambda package includes `web/` beside `lambda_function.py`. The publisher hashes static file paths and contents and uploads assets to `assets/<hash>/`. It writes an asset completion marker only after that bundle is uploaded, then publishes **JSON followed by HTML**. Older bundles remain available for previously cached pages.
+
+Static assets carry a one-year immutable browser cache header. HTML and JSON use `no-cache, must-revalidate`; CloudFront also applies the limits configured in its cache behaviors. Content comparison excludes refresh timestamps. Meaningful changes invalidate `/` and `/index.html`, `/data.json`, or both as appropriate.
+
+Collection failures preserve the last published snapshot. Asset upload failures occur before JSON/HTML publication. The two snapshot objects are written sequentially, so publication is not a multi-object atomic transaction.
+
+### Data and access boundaries
+
+The site and `data.json` are publicly readable and have no viewer sign-in. The snapshot includes machine identifiers and settings; inspect the published schema before adapting this project for another machine. La Marzocco login credentials are retrieved server-side from Secrets Manager. The S3 origin blocks direct public access and permits CloudFront through Origin Access Control.
+
+S3 also holds publisher state under `.cache/`, including the installation key. That prefix is an object naming convention, **not an access-control boundary**: the checked-in bucket policy grants the distribution reads across the bucket. Do not describe the cache as isolated from the serving origin.
+
+There is no server-side shot-history database: recent shots and daily aggregates come from the machine cloud. Recipe overrides and Matrix preferences are local to each browser.
+
+## Develop locally
+
+Use **Python 3.12** and **Node.js 20 or later**. Node is needed for the JavaScript unit tests; there is no npm install or frontend bundler. Three.js 0.170.0 and its companion modules are vendored under `web/vendor/`.
 
 ```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+
 curl -fsS https://espresso.leozh.net/data.json -o /tmp/espresso-data.json
 python tools/preview.py --data /tmp/espresso-data.json
 python -m http.server 8769 --bind 127.0.0.1 --directory build/preview
 ```
 
-Regenerate the preview after editing frontend files. `window.espressoDiagnostics()` exposes current data age/status, selected shot, renderer/model state, and Matrix state for browser checks.
+Open **http://127.0.0.1:8769/**. The preview tool uses the production renderer with an existing snapshot and makes no AWS or machine API calls. The `curl` command above only downloads the public snapshot; substitute your own JSON file if desired. Regenerate the preview after edits, then reload the page.
 
-### Publishing frontend assets
-
-Every Lambda package must include `web/` next to `lambda_function.py`; `buildspec.yml` and the manual packaging script include this step. The CodeBuild project reads `buildspec.yml` from the source artifact so packaging and tests evolve with each commit. Static files are uploaded to `assets/<content-hash>/` with immutable cache headers. A completion marker avoids re-uploading them on subsequent runs. Only after the entire bundle is available does Lambda publish JSON and then HTML. Failed collection or asset publication preserves the previous dashboard.
-
-The current release path uses the private GitLab commit, the existing AWS CodeBuild project, and a direct Lambda code update. GitHub publication remains subject to Code Defender's repository approval; no guardrail bypass is used.
-
-### Model references and limitations
-
-- [Linea Mini parts catalog V1.5](https://lamarzoccousa.com/wp-content/uploads/2019/04/Lineamini_Parts_Catalog_V1.5COLOR.pdf): cabinet proportions, body panels, integrated group, boiler, and gauge assemblies. The catalog lists a 0.17 L integrated brew boiler and a 3 L steam boiler.
-- [La Marzocco Connected Scale](https://home.lamarzoccousa.com/product/connected-scale/): the Acaia collaboration previously named Brew-by-Weight Scale. The 3D scale follows its black body, front display strip, and branding.
-- The user's photo supplies the exterior finish and wood controls. The photo itself is not a deployed asset.
-
-The model is a visual reconstruction, not service CAD. Internal placement, gauges, and circuit animation are illustrative. Gauge needles do not represent measured pressure; the cloud feed exposes boiler targets/readiness, scale connection/battery, and completed-shot yields, not a continuous pressure or scale-weight trace.
-
-## Shot replay, connectivity, and ratios (v3.1.0)
-
-Click the narrow modeled paddle to move it from right (OFF) to left (BREW), or use **Play selected shot** to replay the current shot. The broad walnut cover stays fixed. With brew-by-weight, the pump stops at the recorded yield while the manual lever remains left; click the paddle again to return it right. Clicking it during a replay stops the simulated flow early. The playback buttons separately provide pause/resume and reset. The replay uses its recorded duration and final beverage yield. Flow, intermediate fill levels, component motion, scale animation, and the short drain sequence are illustrative. No machine-control commands are sent. Playback supports pause/resume, reset, and 1x/2x/4x speed. The machine and Look Inside views share one renderer; view/camera state is preserved when switching tabs.
-
-The modeled electronics distinguish the controller from the ESP32 gateway. The machine's captured API data reports `gatewayHw: Esp32`. La Marzocco's [connected-board announcement](https://home.lamarzoccousa.com/linea-mini-connected-machine-retrofit-kits-are-now-available/) says these boards were standard from LM015906. The [installation guide](https://home.lamarzoccousa.com/installation-guide-linea-mini-connected-machine-retrofit-kit/) documents a serial gateway connection to the controller. PCB details and placement are illustrative, not wiring instructions.
-
-Brew ratio means **dry coffee mass : beverage mass**, normalized to 1:x. For example, 18g dry coffee and 36g espresso is 1:2. The owner-provided recipe default is **18g**. The machine feed does not report dry dose, so ratios are labeled as using that recipe default; viewers can change it or enter per-shot overrides in **Brew log**. Inputs are stored locally on that device and are explicitly labeled as recipe defaults or per-shot entries. [Manufacturer ratio guide](https://home.lamarzoccousa.com/using-espresso-brew-ratios/).
-
-The scale is recessed into a grille cutout to match the owner's installation. The [current OEM Connected Scale Drain Tray](https://home.lamarzoccousa.com/product/linea-mini-connected-scale-drain-tray/) illustrates nearly flush mounting, but its listed compatibility is MI-series machines; that specific SKU is not asserted to be fitted to this LM-series machine.
-
-Run browser-independent replay and ratio checks with `node --test tests/*_test.mjs`. CodeBuild runs these in addition to the Python regression suite.
-
-### Paddle and scale verification (2026-09-12)
-
-The updated close-up photo shows a fixed rounded walnut group cover and a separate narrow, downturned wood/steel lever. The [classic Linea Mini manual](https://home.lamarzoccousa.com/wp-content/uploads/2023/09/Linea-Mini-Manual.pdf), page 13, specifies right-to-left motion to start brewing; the parts catalog shows the central vertical spindle and microswitch. Lever angular limits remain a visual reconstruction. [La Marzocco's guide](https://home.lamarzoccousa.com/comprehensive-guide-to-the-linea-mini-is-it-right-for-you/) describes this as an EE on/off microswitch, not pressure profiling.
-
-A raw cloud read with the scale switched on confirmed `ThingScale.connected=true`, 100% battery, and beverage presets of 36g/45g. The raw scale widget contained no live mass or dry-dose field, all returned shot `doseValueNumerator` values were null, and the station listed no paired grinder. [La Marzocco's brew-by-weight guide](https://home.lamarzoccousa.com/using-brew-by-weight-with-the-linea-mini/) explicitly defines its dose setting as output espresso mass. Thus the 18g recipe is user-supplied rather than a scale measurement.
-
-## Features
-
-- **Real-time machine status** (power, temperature, water level)
-- **Usage statistics** (total shots, flushes, last activity)
-- **Seven-day activity** with daily shot and flush counts in the machine's timezone
-- **Five recent shots** with extraction time, weight, and brew-temperature target
-- **Installed firmware release notes** for the gateway and machine
-- **Machine settings** (auto on/off, dosing preferences)
-- **Maintenance alerts** (descaling, cleaning needed)
-- **Beautiful dark theme** optimized for coffee shops
-- **Auto-refresh** every 5 minutes
-- **JSON API endpoint** for integrations
-- **Mobile responsive** design
-
-## Benefits
-
-- **🚀 Serverless**: No servers to manage, scales automatically
-- **💰 Cost Effective**: Pay only when function runs (~$2.75/month with smart invalidation)
-- **🔒 Secure**: Credentials in AWS Secrets Manager, HTTPS only
-- **⚡ Fast**: Global CDN with CloudFront
-- **🔄 Automated**: Updates every 5 minutes automatically via GitOps
-- **📱 Responsive**: Works on desktop and mobile
-- **🛠️ Zero Maintenance**: Fully AWS managed infrastructure
-- **🧠 Smart Caching**: Only invalidates CloudFront when content changes (90% cost savings)
-
-## Architecture
-
-### Application Architecture
-
-The dashboard uses a serverless architecture with the following components:
-
-- **EventBridge**: Triggers Lambda function every 5 minutes
-- **Lambda**: Collects data from La Marzocco API and generates HTML
-- **S3**: Hosts static website files (HTML + JSON)
-- **CloudFront**: Global CDN with SSL termination
-- **Route53**: DNS management for custom domain
-- **Secrets Manager**: Secure storage for La Marzocco credentials
-- **CloudWatch**: Logging and monitoring
-
-### CI/CD Pipeline Architecture
-
-![CI/CD Pipeline Architecture](generated-diagrams/cicd-pipeline-architecture.png)
-
-The project uses GitOps for deployment:
-
-1. **Developer** commits code to GitHub
-2. **CodePipeline** automatically detects changes
-3. **CodeBuild** packages Lambda function with dependencies
-4. **CloudFormation** updates infrastructure and Lambda code
-5. **Dashboard** is automatically updated
-
-## Quick Start
-
-### Prerequisites
-
-1. **Compatible La Marzocco Machine**: Any La Marzocco machine or grinder with cloud connectivity ([see compatibility list](https://support-iot.lamarzocco.com/faq/))
-2. **La Marzocco Account**: Cloud account with machine registered
-3. **AWS Account**: AWS account with appropriate permissions configured
-4. **Domain**: Route53 hosted zone for your domain
-5. **Tools**: AWS CLI, Python 3.11+, jq (for JSON parsing)
-
-**Note**: Uses pinned `pylamarzocco==2.4.3` on Python 3.12 with installation key authentication. The dashboard preserves raw shot weights and daily flush counts that the client's typed statistics models omit.
-
-### Recent Updates (v2.4.0)
-
-- Updated the machine client to 2.4.3 and pinned it to keep builds reproducible.
-- Replaced exception-text parsing with typed lifetime counters and preserved raw shot details.
-- Added seven-day activity, per-shot temperature targets, and installed firmware release notes.
-- Corrected smart standby settings and averages for fewer than five recent shots.
-- Collection errors leave the last successfully published dashboard intact.
-
-### Recent Updates (v2.3.0)
-
-✅ **API Compatibility Fixed**: Updated to work with latest La Marzocco Cloud API changes
-- **New Authentication**: Migrated to installation key system (automatic device registration)
-- **Complete Data**: Maintains all dashboard features including recent shots and lifetime statistics
-- **Enhanced Reliability**: Robust error handling for API changes
-- **CI/CD Updated**: Migrated pipeline from GitHub OAuth to CodeStar Connections
-
-### 1. Setup Environment
+### Checks
 
 ```bash
-cd ~/git/la-marzocco-dashboard
-cp .env.example .env
-```
-
-Edit `.env` with your credentials:
-```bash
-AWS_REGION=<your-aws-region>
-DOMAIN_NAME=<your-domain-name>
-```
-
-**Note**: La Marzocco credentials are stored securely in AWS Secrets Manager, not in `.env` files.
-
-### 2. Deploy CI/CD Pipeline
-
-```bash
-# Set your AWS profile and region
-export AWS_PROFILE=<your-profile-name>
-export AWS_REGION=<your-aws-region>
-
-# Deploy the CodePipeline
-./deploy-pipeline.sh
-```
-
-This creates the CI/CD pipeline that will automatically deploy your application from GitHub.
-
-### 3. Configure Secrets in AWS Secrets Manager
-
-The pipeline uses two secrets stored in AWS Secrets Manager:
-
-#### **La Marzocco Credentials** (Created by Pipeline)
-After the pipeline is deployed, you need to add your La Marzocco credentials:
-
-```bash
-# Find your La Marzocco secret name
-aws secretsmanager list-secrets \
-  --region $AWS_REGION \
-  --query 'SecretList[?contains(Name, `lamarzocco-credentials`)].Name' \
-  --output text
-
-# Update the secret with your La Marzocco credentials
-aws secretsmanager update-secret \
-  --secret-id <secret-name-from-above> \
-  --secret-string '{"username":"your-lamarzocco-username","password":"your-lamarzocco-password"}' \
-  --region $AWS_REGION
-```
-
-#### **GitHub Token** (Pre-existing)
-The pipeline also requires a GitHub personal access token for repository access:
-
-```bash
-# Check if GitHub token secret exists
-aws secretsmanager describe-secret \
-  --secret-id la-marzocco-github-token \
-  --region $AWS_REGION
-
-# If it doesn't exist, create it with your GitHub token
-aws secretsmanager create-secret \
-  --name la-marzocco-github-token \
-  --description "GitHub token for pipeline access" \
-  --secret-string '{"token":"your-github-personal-access-token"}' \
-  --region $AWS_REGION
-```
-
-**GitHub Token Requirements:**
-- **Scope**: `repo` (Full control of private repositories)
-- **Format**: Personal Access Token (classic)
-- **Permissions**: Read access to your la-marzocco-dashboard repository
-
-**Important**: Replace placeholders with your actual credentials:
-- `<your-profile-name>`: Your AWS CLI profile name
-- `<your-aws-region>`: Your deployment region  
-- `your-lamarzocco-username`: Your La Marzocco Cloud email
-- `your-lamarzocco-password`: Your La Marzocco Cloud password
-- `your-github-personal-access-token`: Your GitHub PAT
-
-**Note**: The pipeline creates a single shared La Marzocco secret that both the deployment process and the Lambda function use, avoiding duplicate credential storage.
-
-### 4. Deploy Application (via Git)
-
-```bash
-# Make any changes to your code
-git add .
-git commit -m "Initial deployment"
-git push origin main
-```
-
-The CodePipeline will automatically:
-- Build the Lambda deployment package
-- Deploy/update CloudFormation stack
-- Update Lambda function code
-- Refresh the dashboard
-
-### 5. Access Dashboard
-
-Visit `https://your-domain.com` (your configured domain)
-
-## What Gets Created
-
-### AWS Resources (via CloudFormation)
-- **Lambda Function**: Data collection and HTML generation
-- **EventBridge Rule**: Triggers function every 5 minutes
-- **S3 Bucket**: Static website hosting
-- **CloudFront Distribution**: Global CDN with SSL
-- **Route53 Records**: DNS management
-- **ACM Certificate**: SSL certificate
-- **Secrets Manager**: Secure credential storage
-- **IAM Roles**: Least privilege access
-- **CloudWatch Logs**: Function monitoring
-
-### CI/CD Resources
-- **CodePipeline**: Automated deployment pipeline
-- **CodeBuild**: Lambda package building
-- **S3 Artifacts Bucket**: Build artifact storage
-- **IAM Roles**: Pipeline execution permissions
-
-### Monthly Cost: ~$2.75
-
-**Smart CloudFront Invalidation Optimization**: The dashboard uses intelligent content change detection to only invalidate CloudFront when machine data actually changes, reducing invalidation costs by 90% (from ~$70/month to <$5/month).
-
-## Smart CloudFront Invalidation
-
-### Cost Optimization Overview
-The dashboard implements intelligent CloudFront invalidation to dramatically reduce costs while maintaining real-time updates.
-
-### How It Works
-1. **Content Change Detection**: Compares SHA256 hashes of normalized machine data (excluding timestamps)
-2. **Selective Invalidation**: Only invalidates CloudFront paths when content actually changes
-3. **Cache Storage**: Stores content hashes in S3 `.cache/` folder for persistence across Lambda executions
-4. **User Experience Preserved**: Display timestamps still update for freshness, but don't trigger unnecessary invalidations
-
-### Cost Impact
-- **Before Optimization**: 8,640 invalidations/month × 2 paths × $0.005 = **$76.40/month**
-- **After Optimization**: ~5-10% of executions need invalidation = **$3-7/month**
-- **Monthly Savings**: **$65-70/month (90%+ reduction)**
-- **Annual Savings**: **$780-840/year**
-
-### Technical Details
-```python
-# Smart invalidation logic
-normalized_data = self.normalize_machine_data_for_comparison(machine_data)
-if self.has_content_changed(html_content, self.html_cache_key):
-    paths_to_invalidate.append('/index.html')
-if self.has_content_changed(normalized_json, self.json_cache_key):
-    paths_to_invalidate.append('/data.json')
-```
-
-### Monitoring
-Check Lambda logs to see invalidation decisions:
-```bash
-aws logs filter-log-events \
-  --log-group-name /aws/lambda/la-marzocco-dashboard-updater \
-  --filter-pattern "invalidation" \
-  --region $AWS_REGION
-```
-
-## Management
-
-### View Pipeline Status
-```bash
-aws codepipeline get-pipeline-state \
-  --name la-marzocco-deployment-pipeline-pipeline \
-  --region $AWS_REGION
-```
-
-### View Application Logs
-```bash
-aws logs tail /aws/lambda/la-marzocco-dashboard-updater \
-  --region $AWS_REGION \
-  --follow
-```
-
-### Test Lambda Function
-```bash
-aws lambda invoke \
-  --function-name la-marzocco-dashboard-updater \
-  --payload '{}' \
-  --region $AWS_REGION \
-  response.json && cat response.json | jq .
-```
-
-### Manual Stack Operations (if needed)
-```bash
-# View stack status
-aws cloudformation describe-stacks \
-  --stack-name la-marzocco-dashboard \
-  --region $AWS_REGION
-
-# View stack resources
-aws cloudformation list-stack-resources \
-  --stack-name la-marzocco-dashboard \
-  --region $AWS_REGION
-```
-
-### Delete Everything
-```bash
-./cleanup.sh
-```
-
-## Project Structure
-
-```
-la-marzocco-dashboard/
-├── cloudformation/
-│   ├── main.yaml              # Application CloudFormation template
-│   ├── pipeline.yaml          # CI/CD pipeline CloudFormation template
-│   ├── parameters.json        # Application stack parameters
-│   └── pipeline-parameters.json # Pipeline stack parameters
-├── src/
-│   └── lambda_function.py     # Python Lambda function
-├── generated-diagrams/        # Architecture diagrams
-│   ├── application-architecture.png
-│   └── cicd-pipeline-architecture.png
-├── deploy-pipeline.sh         # Deploy CI/CD pipeline
-├── deploy.sh                  # Manual deployment (legacy)
-├── cleanup.sh                 # Complete cleanup
-├── buildspec.yml              # CodeBuild specification
-├── requirements.txt           # Python dependencies
-├── .env.example              # Environment template
-├── .gitignore                # Git ignore rules
-├── README.md                 # This file
-└── CHANGELOG.md              # Project change history
-```
-
-## Customization
-
-### Update Frequency
-Edit the EventBridge rule in `cloudformation/main.yaml`:
-```yaml
-DashboardScheduleRule:
-  Properties:
-    ScheduleExpression: 'rate(10 minutes)'  # Change from 5 minutes
-```
-
-Then commit and push: `git push origin main`
-
-### Dashboard Styling
-Edit the HTML template in `src/lambda_function.py` in the `generate_dashboard_html` method.
-
-### Domain Configuration
-1. Update `DOMAIN_NAME` in `.env`
-2. Commit and push: `git push origin main`
-
-## Data Collected
-
-The dashboard displays comprehensive machine information:
-
-```json
-{
-  "machine_info": {
-    "name": "Linea Mini",
-    "model": "Linea Mini", 
-    "serial_number": "LM016332",
-    "firmware_version": "Gateway: 1.2.3, Machine: 4.5.6",
-    "connected": true,
-    "connection_date": "2025-01-15T10:30:00Z",
-    "image_url": "https://..."
-  },
-  "status": {
-    "power_on": true,
-    "mode": "BREWING_MODE",
-    "coffee_boiler_temp": 201.2,
-    "coffee_boiler_ready": true,
-    "coffee_boiler_range": "190-210°F",
-    "steam_boiler_status": "READY",
-    "steam_boiler_enabled": true,
-    "scale_connected": true,
-    "scale_battery": 83,
-    "scale_name": "LMZ-59BD90",
-    "scale_calibration_required": false
-  },
-  "statistics": {
-    "total_shots": 5051,
-    "total_flushes": 1837,
-    "last_cleaning": "2025-06-15T09:15:00Z"
-  },
-  "brewing": {
-    "pre_brewing_mode": "PreInfusion",
-    "pre_brewing_available": ["PreBrewing", "PreInfusion", "Disabled"],
-    "dose_mode": "MassType",
-    "dose_1": 20.0,
-    "dose_2": 30.0,
-    "dose_range": "5-100g"
-  },
-  "recent_shots": [
-    {
-      "time": 1751755324037,
-      "extraction_seconds": 31.1,
-      "dose_value": 20.3,
-      "dose_mode": "MassType",
-      "dose_index": "1"
-    }
-  ],
-  "settings": {
-    "wifi_ssid": "CoffeeShop-WiFi",
-    "wifi_signal": -45,
-    "plumbed_in": true,
-    "auto_update": true,
-    "smart_standby_enabled": true,
-    "smart_standby_minutes": 30
-  },
-  "maintenance": {
-    "cleaning_status": "READY",
-    "last_cleaning_date": "2025-06-15",
-    "firmware_update_required": false,
-    "firmware_update_available": false
-  },
-  "timestamp": "2025-07-06T08:00:00Z",
-  "collection_method": "La Marzocco Cloud API",
-  "client_version": "pylamarzocco"
-}
-```
-
-## Troubleshooting
-
-### Pipeline Deployment Failed
-```bash
-# Check pipeline execution
-aws codepipeline list-pipeline-executions \
-  --pipeline-name la-marzocco-deployment-pipeline-pipeline \
-  --region $AWS_REGION
-
-# Check CodeBuild logs
-aws logs filter-log-events \
-  --log-group-name /aws/codebuild/la-marzocco-deployment-pipeline-build \
-  --start-time $(date -d '1 hour ago' +%s)000 \
-  --region $AWS_REGION
-```
-
-### Stack Deployment Failed
-```bash
-# Check what failed
-aws cloudformation describe-stack-events \
-  --stack-name la-marzocco-dashboard \
-  --region $AWS_REGION \
-  --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`]'
-```
-
-### Lambda Function Not Working
-```bash
-# Check recent logs
-aws logs filter-log-events \
-  --log-group-name /aws/lambda/la-marzocco-dashboard-updater \
-  --start-time $(date -d '1 hour ago' +%s)000 \
-  --region $AWS_REGION
-```
-
-### Dashboard Not Loading
-1. Wait 5-10 minutes for DNS/SSL propagation
-2. Check CloudFront distribution status
-3. Verify S3 bucket has content
-4. Check Route53 DNS records
-
-### Authentication Issues
-1. Verify La Marzocco credentials in AWS Secrets Manager
-2. Test credentials with La Marzocco mobile app
-3. Check Secrets Manager console for credential updates
-
-## Security
-
-### Current Implementation
-- ✅ Credentials stored in AWS Secrets Manager (encrypted at rest)
-- ✅ HTTPS only via CloudFront and ACM
-- ✅ S3 bucket not publicly accessible (CloudFront OAC)
-- ✅ Lambda execution role with minimal permissions
-- ✅ CloudFormation stack with least privilege IAM policies
-- ✅ CodePipeline with secure artifact storage
-
-### Security Best Practices
-- Regularly rotate La Marzocco credentials in Secrets Manager
-- Monitor CloudTrail for unusual API activity
-- Enable AWS Config for compliance monitoring
-- Set up billing alerts for cost anomalies
-- Review IAM permissions in CloudFormation templates
-
-## Cost Breakdown
-
-### Monthly Costs (Approximate)
-- **Lambda**: ~$0.20 (8,640 invocations × 2 seconds × $0.0000166667/GB-second)
-- **EventBridge**: ~$0.09 (8,640 events × $1.00/million)
-- **S3**: ~$0.02 (minimal storage and requests)
-- **CloudFront**: ~$0.50 (assuming moderate traffic)
-- **CloudFront Invalidations**: ~$0.05 (smart invalidation - only when content changes)
-- **Secrets Manager**: ~$0.40 (1 secret)
-- **Route53**: ~$0.50 (hosted zone)
-- **CodePipeline**: ~$1.00 (1 active pipeline)
-- **CodeBuild**: ~$0.05 (minimal build time)
-
-**Total**: ~$2.81/month
-
-**Cost Optimization**: Smart CloudFront invalidation reduces monthly costs by ~$65-70 compared to naive invalidation (90%+ savings on invalidation fees).
-
-## API Endpoints
-
-### Dashboard
-- **URL**: `https://your-domain.com/`
-- **Content**: Full HTML dashboard
-
-### JSON Data
-- **URL**: `https://your-domain.com/data.json`
-- **Content**: Raw machine data in JSON format
-- **Cache**: 1 minute TTL
-
-## Development
-
-### Local Testing
-
-Run the offline regression suite using Python 3.12:
-
-```bash
-python -m pip install -r requirements.txt
 python -m unittest discover -s tests -p '*_test.py' -v
+node --test tests/*_test.mjs
 ```
 
-These tests mock cloud access and cover client parsing, lifetime counters, shot weights, daily timezone grouping, rendering, and failure handling.
+The Python suite mocks cloud access and covers statistics parsing, timezone grouping, rendering, publication order, and failure handling. Node tests cover ratios, replay timing, and paddle states. CodeBuild runs both suites before packaging.
 
-The Lambda handler is the publishing entry point. With AWS credentials and the following environment variables, it reads the machine API and updates the configured S3 website:
+For visual changes, check desktop and mobile layouts, tab switching, paddle/playback interactions, cutaway/exploded views, and Matrix/reduced-motion behavior. In the browser console, `window.espressoDiagnostics()` reports data freshness, selected shot, model/replay state, and Matrix state.
+
+### Where to make changes
+
+| Path | Responsibility |
+| --- | --- |
+| `src/lambda_function.py` | Cloud collection, statistics adapter, rendering, S3 publication, invalidation |
+| `web/index.html` | Jinja page shell and embedded initial snapshot |
+| `web/dashboard.js`, `web/dashboard.css` | Tabs, telemetry, brew log, refresh behavior, responsive layout |
+| `web/machine.js` | Procedural 3D model, materials, cameras, cutaway/exploded views |
+| `web/paddle-kinematics.mjs`, `web/shot-replay.mjs` | Paddle movement and illustrative extraction playback |
+| `web/espresso-ratio.mjs`, `web/matrix.js` | Recipe ratios and optional background animation |
+| `web/vendor/` | Three.js modules and upstream license |
+| `tools/preview.py` | Local staging of the production frontend |
+| `tests/` | Python and Node regression suites |
+| `buildspec.yml` | Linux build, tests, and Lambda packaging |
+| `cloudformation/main.yaml`, `cloudformation/pipeline.yaml` | Application and retained pipeline infrastructure |
+| `docs/`, `generated-diagrams/` | Release guide, editable architecture diagrams, and PNG previews |
+| `tools/generate_architecture_diagrams.py` | Reproducible diagram XML generation |
+
+The root deployment shell scripts, `src/lambda_function_optimized.py`, `cloudformation/cache-optimization.yaml`, and root `lambda_*test*.json` captures belong to earlier workflows. They are retained for reference; use the current buildspec, preview tool, and release guide. The original `.kiro/specs/` documents are historical design records.
+
+## Deployment
+
+Current application releases use **private GitLab → committed source archive → AWS CodeBuild → Lambda code update**. A GitLab push records the source revision; an operator starts the AWS build and deployment separately.
+
+![Private GitLab source built in CodeBuild and released to the dashboard Lambda](generated-diagrams/cicd-pipeline-architecture.png)
+
+[Editable draw.io source](docs/cicd-pipeline-architecture.drawio) · [Release and rollback procedure](docs/deployment.md)
+
+The existing CodePipeline still watches GitHub through CodeConnections. It builds the source, applies a CloudFormation change set, and invokes a helper Lambda to update application code. It is a **separate retained path**, not an automatic continuation of a private GitLab push. See the [GitHub pipeline diagram](generated-diagrams/github-pipeline-architecture.png) and [editable source](docs/github-pipeline-architecture.drawio).
+
+The current private path deploys application code only. Infrastructure edits require a reviewed CloudFormation change set. Changing `.env` or pushing to GitLab does not update the deployed domain, schedule, or stack configuration. The legacy `deploy-pipeline.sh` still asks for a GitHub PAT, which the current CodeConnections source action does not use.
+
+### Deployment reference
+
+Configuration checked **2026-09-12**; these identifiers describe this installation, not defaults for a new deployment.
+
+| Resource | Value |
+| --- | --- |
+| Public site | `https://espresso.leozh.net/` |
+| AWS account / region | `<account-id>` / `us-west-2` |
+| Application stack | `la-marzocco-dashboard` |
+| Collector Lambda | `la-marzocco-dashboard-updater` — Python 3.12, 512 MB, 300s timeout |
+| Schedule | `la-marzocco-dashboard-schedule` — `rate(5 minutes)` |
+| Website bucket | `la-marzocco-dashboard-exwneqtv` |
+| CloudFront distribution | `E1CKKDNSRS9CLJ` |
+| Build project | `la-marzocco-deployment-pipeline-build` |
+| Retained pipeline | `la-marzocco-deployment-pipeline-pipeline` |
+
+Lambda requires `S3_BUCKET_NAME` and `LAMARZOCCO_SECRET_NAME`; `CLOUDFRONT_DISTRIBUTION_ID` enables invalidation. The secret contains `username` and `password`. Previewing and unit testing do not require these settings.
+
+For a new installation, adapt the CloudFormation templates and parameters, provide a registered cloud-connected machine and Secrets Manager credentials, and package the collector using the buildspec. Domain provisioning expects an existing Route 53 hosted zone and creates a CloudFront certificate in `us-east-1`. The legacy shell scripts are not a maintained one-command bootstrap.
+
+## Operations
+
+These examples use the owner's `leo` CLI profile and explicitly select `us-west-2`. Use the credentials for the intended account and confirm identity before making changes; the profile's default region may differ.
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Set environment variables
-export S3_BUCKET_NAME=your-bucket
-export LAMARZOCCO_SECRET_NAME=your-secret
-export CLOUDFRONT_DISTRIBUTION_ID=your-distribution
-
-# Run an update against the configured AWS resources
-PYTHONPATH=src python -c 'from lambda_function import lambda_handler; print(lambda_handler({}, None))'
+aws --profile leo --region us-west-2 sts get-caller-identity
+aws --profile leo --region us-west-2 logs tail \
+  /aws/lambda/la-marzocco-dashboard-updater --since 1h
+aws --profile leo --region us-west-2 codebuild list-builds-for-project \
+  --project-name la-marzocco-deployment-pipeline-build --sort-order DESCENDING
 ```
 
-### GitOps Workflow
-1. **Make Changes**: Edit code, templates, or configuration
-2. **Commit**: `git add . && git commit -m "Description"`
-3. **Deploy**: `git push origin main`
-4. **Monitor**: Check CodePipeline execution
-5. **Verify**: Test dashboard functionality
+| Symptom | Check |
+| --- | --- |
+| Old readings, but page loads | Inspect `data.json`'s `timestamp`, the enabled EventBridge rule, and collector logs. A collection error leaves old data available. |
+| Missing or broken 3D model | Confirm the Lambda ZIP includes `web/`, the referenced `assets/<hash>/` files exist, and the browser console has no module-load errors. |
+| Cloud authentication fails | Check Secrets Manager configuration and cloud-account machine registration. The collector persists its installation key in S3. |
+| Wrong ratio | Edit the dry-dose recipe or per-shot override in Brew log. Scale connection does not provide dry coffee dose. |
+| GitLab push did not deploy | Start the private release procedure; there is no GitLab-triggered AWS pipeline. |
+| Failed retained pipeline | Inspect CodePipeline stage status, CodeBuild logs, and application CloudFormation events. |
 
-## AWS Profile Usage
+To refresh immediately, invoke the collector and inspect its returned `statusCode`. **This publishes to the live website**; it is not a read-only test.
 
-This project supports any AWS CLI profile configuration:
-
-### Environment Variable Method (Recommended)
 ```bash
-export AWS_PROFILE=<your-profile-name>
-export AWS_REGION=<your-aws-region>
-./deploy-pipeline.sh
+aws --profile leo --region us-west-2 lambda invoke \
+  --function-name la-marzocco-dashboard-updater \
+  --payload '{}' /tmp/espresso-refresh.json
+cat /tmp/espresso-refresh.json
 ```
 
-### Per-Command Method
-```bash
-AWS_PROFILE=<your-profile-name> AWS_REGION=<your-aws-region> ./deploy-pipeline.sh
-```
+Operating cost depends on traffic, collection duration, build frequency, storage, and invalidation volume. The repository does not establish a measured monthly total or a fixed percentage saving; use actual AWS billing data for those figures.
 
-### Default Profile
-If no profile is specified, scripts use your default AWS CLI profile and the region from your `.env` file.
+## References
 
-## Support
-
-### Project Documentation
-- **README.md**: Complete project documentation (this file)
-- **CHANGELOG.md**: Detailed change history and version information
-
-### AWS Documentation
-- [CloudFormation User Guide](https://docs.aws.amazon.com/cloudformation/)
-- [Lambda Developer Guide](https://docs.aws.amazon.com/lambda/)
-- [CodePipeline User Guide](https://docs.aws.amazon.com/codepipeline/)
-- [EventBridge User Guide](https://docs.aws.amazon.com/eventbridge/)
-
-### La Marzocco API
-- [pylamarzocco Library](https://github.com/zweckj/pylamarzocco)
-
-### Useful Commands
-```bash
-# Pipeline operations
-aws codepipeline list-pipelines --region $AWS_REGION
-aws codepipeline get-pipeline-state --name pipeline-name --region $AWS_REGION
-
-# Stack operations
-aws cloudformation list-stacks --region $AWS_REGION
-aws cloudformation validate-template --template-body file://cloudformation/main.yaml
-
-# Resource inspection
-aws cloudformation list-stack-resources --stack-name la-marzocco-dashboard --region $AWS_REGION
-
-# Monitoring
-aws logs describe-log-groups --log-group-name-prefix /aws/lambda/la-marzocco --region $AWS_REGION
-aws events list-rules --name-prefix la-marzocco --region $AWS_REGION
-```
-
----
-
-**Created by [Leo Zhadanovsky](https://github.com/leozhad/la-marzocco-dashboard)**
+- [pylamarzocco](https://github.com/zweckj/pylamarzocco) — cloud client.
+- [Linea Mini parts catalog](https://lamarzoccousa.com/wp-content/uploads/2019/04/Lineamini_Parts_Catalog_V1.5COLOR.pdf) and [classic Linea Mini manual](https://home.lamarzoccousa.com/wp-content/uploads/2023/09/Linea-Mini-Manual.pdf) — mechanical layout and paddle operation.
+- [Connected Scale](https://home.lamarzoccousa.com/product/connected-scale/), [brew-by-weight](https://home.lamarzoccousa.com/using-brew-by-weight-with-the-linea-mini/), and [brew ratios](https://home.lamarzoccousa.com/using-espresso-brew-ratios/) — scale and recipe semantics.
+- [Connected-machine retrofit guide](https://home.lamarzoccousa.com/installation-guide-linea-mini-connected-machine-retrofit-kit/) — gateway/controller context. PCB placement in the visualization is illustrative.
+- [Connected Scale Drain Tray](https://home.lamarzoccousa.com/product/linea-mini-connected-scale-drain-tray/) — flush-mount reference. Its listed MI-series compatibility does not identify the owner's LM-series tray SKU.
+- [AWS architecture diagram skill](https://github.com/awslabs/agent-plugins/tree/main/plugins/deploy-on-aws/skills/aws-architecture-diagram) — official AWS4 icon styling and draw.io workflow used for the diagrams.
 
 ## License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for complete terms.
-
-### License Summary
-
-The MIT License is a permissive open source license that provides you with:
-
-#### ✅ **Permissions**
-- **Commercial Use**: Use the software for commercial purposes
-- **Modification**: Create derivative works and modifications
-- **Distribution**: Share and redistribute the software
-- **Private Use**: Use the software for private purposes
-
-#### 📋 **Requirements**
-- **License and Copyright Notice**: Include the original license and copyright notice with the software
-
-#### ⚠️ **Limitations**
-- **No Liability**: Authors are not liable for damages
-- **No Warranty**: Software provided "AS IS" without warranties
-
-### Contributing
-
-By contributing to this project, you agree that your contributions will be licensed under the same MIT License. All voluntary contributions are welcome and will help improve the La Marzocco Dashboard for the entire community.
-
-The MIT License is one of the most permissive and widely-used open source licenses, making this project easy to use, modify, and integrate into other projects.
-
-**Enjoy your serverless La Marzocco dashboard!** ☕️
+[MIT](LICENSE). Vendored Three.js code retains its [upstream MIT license](web/vendor/THREE-LICENSE.txt).
